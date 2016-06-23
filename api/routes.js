@@ -1,5 +1,4 @@
-var app = require('./api');
-
+// var app = require('./api');
 // app.all('/*', function(req, res, next) {
 //   // res.header("Access-Control-Allow-Origin", "http://pub.media.mit.edu");
 //   res.header("Access-Control-Allow-Origin", req.headers.origin);
@@ -9,6 +8,8 @@ var app = require('./api');
 //   next();
 // });
 
+require('./routes/app-routes');
+require('./routes/asset-routes');
 require('./routes/autocomplete-routes');
 require('./routes/discussion-routes');
 require('./routes/group-routes');
@@ -20,3 +21,4 @@ require('./routes/test-routes');
 require('./routes/math-routes');
 require('./routes/s3-upload-policy');
 require('./routes/rssGen.js');
+require('./routes/export-routes');

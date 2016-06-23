@@ -4,13 +4,17 @@ import { Link } from 'react-router';
 import { pushState } from 'redux-router';
 import Radium from 'radium';
 import Helmet from 'react-helmet';
-import {getJournal, saveJournal, createCollection, clearCollectionRedirect} from '../../actions/journal';
-import {follow, unfollow, toggleVisibility} from '../../actions/login';
-import {LoaderDeterminate, JournalCurate, JournalDesign, JournalMain, JournalSettings} from '../../components';
-import {NotFound} from '../../containers';
-import {globalStyles, profileStyles, navStyles} from '../../utils/styleConstants';
+import {getJournal, saveJournal, createCollection, clearCollectionRedirect} from './actions';
+import {follow, unfollow, toggleVisibility} from 'containers/Login/actions';
+import {LoaderDeterminate, NotFound} from 'components';
+import JournalDesign from './JournalDesign';
+import JournalCurate from './JournalCurate';
+import JournalMain from './JournalMain';
+import JournalSettings from './JournalSettings';
 
-import {globalMessages} from '../../utils/globalMessages';
+import {globalStyles, profileStyles, navStyles} from 'utils/styleConstants';
+
+import {globalMessages} from 'utils/globalMessages';
 import {FormattedMessage} from 'react-intl';
 
 let styles = {};
@@ -18,6 +22,7 @@ let styles = {};
 const JournalAdmin = React.createClass({
 	propTypes: {
 		journalData: PropTypes.object,
+		appData: PropTypes.object,
 		loginData: PropTypes.object,
 		subdomain: PropTypes.string,
 		mode: PropTypes.string,
@@ -26,19 +31,19 @@ const JournalAdmin = React.createClass({
 
 	statics: {
 		fetchDataDeferred: function(getState, dispatch, location, routerParams) {
-			// If there is a baseSubdomain, that means we're on a journal. If baseSubdomain is null, that means we're on pubpub. 
-			// Only fetch if we're on pubpub - otherwise, the journalData we display is the data for that journal. 
+			// If there is a baseSubdomain, that means we're on a journal. If baseSubdomain is null, that means we're on pubpub.
+			// Only fetch if we're on pubpub - otherwise, the journalData we display is the data for that journal.
 			// Elsewhere, we render default pubpub styling by checking for null baseSubdomain (or maybe it's sourced from the backend, with null kept as subdomain field)
-			if (getState().journal.get('baseSubdomain') === null && getState().journal.getIn(['journalData', 'subdomain']) !== routerParams.subdomain) {
+			if (getState().journal.getIn(['journalData', 'subdomain']) !== routerParams.subdomain) {
 				return dispatch(getJournal(routerParams.subdomain));
 			}
-			return ()=>{};	
+			return ()=>{};
 		}
 	},
 
 	componentWillReceiveProps(nextProps) {
 		if (nextProps.journalData.get('createCollectionStatus') === 'created') {
-			this.props.dispatch(pushState(null, ('/collection/' + nextProps.journalData.get('createCollectionSlug') + '/draft')));
+			this.props.dispatch(pushState(null, ('/collection/' + nextProps.journalData.get('createCollectionSlug') + '/edit')));
 			this.props.dispatch(clearCollectionRedirect());
 		}
 	},
@@ -69,7 +74,7 @@ const JournalAdmin = React.createClass({
 		};
 
 		const isFollowing = this.props.loginData.getIn(['userData', 'following', 'journals']) ? this.props.loginData.getIn(['userData', 'following', 'journals']).indexOf(this.props.journalData.getIn(['journalData', '_id'])) > -1 : false;
-		
+
 		if (isFollowing) {
 			this.props.dispatch( unfollow('journals', this.props.journalData.getIn(['journalData', '_id']), analyticsData) );
 		} else {
@@ -80,17 +85,16 @@ const JournalAdmin = React.createClass({
 	render: function() {
 		const metaData = {};
 		metaData.title = 'Journal';
-
 		return (
 			<div style={profileStyles.profilePage}>
 
 				<Helmet {...metaData} />
 
 				{
-					(this.props.subdomain !== this.props.journalData.get('baseSubdomain') && this.props.journalData.get('baseSubdomain') !== null) || (this.props.mode && !this.props.journalData.getIn(['journalData', 'isAdmin']))
+					(this.props.subdomain !== this.props.appData.get('baseSubdomain') && this.props.appData.get('baseSubdomain') !== null) || (this.props.mode && !this.props.journalData.getIn(['journalData', 'isAdmin']))
 						? <NotFound />
 						: <div style={profileStyles.profileWrapper}>
-					
+
 							<div style={[globalStyles.hiddenUntilLoad, globalStyles[this.props.journalData.get('status')]]}>
 								<ul style={navStyles.navList}>
 									<Link to={'/journal/' + this.props.subdomain + '/settings'} style={globalStyles.link}><li key="journalNav0" style={[navStyles.navItem, this.props.journalData.getIn(['journalData', 'isAdmin']) && navStyles.navItemShow]}>
@@ -109,7 +113,7 @@ const JournalAdmin = React.createClass({
 									<li style={[navStyles.navSeparator, this.props.journalData.getIn(['journalData', 'isAdmin']) && navStyles.navItemShow, navStyles.noMobile]}></li>
 
 									<li key="journalNav3" style={[navStyles.navItem, !this.props.journalData.getIn(['journalData', 'isAdmin']) && navStyles.navItemShow]} onClick={this.followJournalToggle}>
-										{this.props.loginData.getIn(['userData', 'following', 'journals']) && this.props.loginData.getIn(['userData', 'following', 'journals']).indexOf(this.props.journalData.getIn(['journalData', '_id'])) > -1 
+										{this.props.loginData.getIn(['userData', 'following', 'journals']) && this.props.loginData.getIn(['userData', 'following', 'journals']).indexOf(this.props.journalData.getIn(['journalData', '_id'])) > -1
 											? <FormattedMessage {...globalMessages.following} />
 											: <FormattedMessage {...globalMessages.follow} />
 										}
@@ -117,11 +121,11 @@ const JournalAdmin = React.createClass({
 									<li style={[navStyles.navSeparator, !this.props.journalData.getIn(['journalData', 'isAdmin']) && navStyles.navItemShow]}></li>
 								</ul>
 							</div>
-							
+
 							<LoaderDeterminate value={this.props.journalData.get('status') === 'loading' ? 0 : 100}/>
 
 							<div style={[globalStyles.hiddenUntilLoad, globalStyles[this.props.journalData.get('status')], styles.contentWrapper]}>
-								
+
 								<div>
 									<Link to={'/journal/' + this.props.subdomain} style={globalStyles.link}>
 										<span style={styles.headerJournalName} key={'headerJournalName'}>{this.props.journalData.getIn(['journalData', 'journalName'])}</span>
@@ -137,7 +141,7 @@ const JournalAdmin = React.createClass({
 										switch (this.props.mode) {
 										case 'curate':
 											return (
-												<JournalCurate 
+												<JournalCurate
 													journalData={this.props.journalData.get('journalData').toJS()}
 													journalSaving={this.props.journalData.get('journalSaving')}
 													journalSaveHandler={this.journalSave}
@@ -146,35 +150,36 @@ const JournalAdmin = React.createClass({
 											);
 										case 'design':
 											return (
-												<JournalDesign 
+												<JournalDesign
 													designObject={this.props.journalData.getIn(['journalData', 'design']) ? this.props.journalData.getIn(['journalData', 'design']).toJS() : {}}
 													journalSaving={this.props.journalData.get( 'journalSaving')}
 													journalSaveHandler={this.journalSave}
-													journalData={this.props.journalData}/>
+													journalData={this.props.journalData}
+													query={this.props.query} />
 											);
 										case 'settings':
 											return (
-												<JournalSettings 
+												<JournalSettings
 													journalData={this.props.journalData.get('journalData').toJS()}
 													journalSaving={this.props.journalData.get( 'journalSaving')}
 													journalSaveHandler={this.journalSave}/>
 											);
-										
+
 										default:
 											return (
-												<JournalMain 
+												<JournalMain
 													journalData={this.props.journalData.get('journalData').toJS()}/>
 											);
 										}
 									})()}
 								</div>
-								
+
 
 							</div>
 
 						</div>
 				}
-								
+
 			</div>
 		);
 	}
@@ -183,10 +188,12 @@ const JournalAdmin = React.createClass({
 
 export default connect( state => {
 	return {
-		loginData: state.login, 
-		journalData: state.journal, 
+		loginData: state.login,
+		journalData: state.journal,
+		appData: state.app,
 		subdomain: state.router.params.subdomain,
-		mode: state.router.params.mode
+		mode: state.router.params.mode,
+		query: state.router.location.query,
 	};
 })( Radium(JournalAdmin) );
 

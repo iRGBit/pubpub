@@ -9,33 +9,31 @@ import Helmet from 'react-helmet';
 import PureRenderMixin from 'react-addons-pure-render-mixin';
 import ReactFireMixin from 'reactfire';
 
-import {Discussions, EditorModals} from '../';
-import {LoaderDeterminate, EditorPluginPopup, EditorTopNav, EditorBottomNav, EditorStylePane, PubBody} from '../../components';
-import {clearPub} from '../../actions/pub';
-import {getPubEdit, toggleEditorViewMode, toggleFormatting, toggleTOC, unmountEditor, closeModal, openModal, addSelection, setEditorViewMode, publishVersion, updatePubBackendData, saveStyle} from '../../actions/editor';
+import {Discussions} from 'containers';
+import EditorModals from './EditorModals';
+import EditorStylePane from './EditorStylePane';
+import {LoaderDeterminate, Formatting, PubBody, Menu} from 'components';
+import {clearPub} from 'containers/PubReader/actions';
+import {getPubEdit, toggleEditorViewMode, unmountEditor, closeModal, openModal, addSelection, setEditorViewMode, saveVersion, updatePubBackendData, saveStyle, waitForUpload} from './actions';
 
-import {debounce} from '../../utils/loadingFunctions';
-import {submitPubToJournal} from '../../actions/journal';
+import {debounce} from 'utils/loadingFunctions';
+import {submitPubToJournal} from 'containers/JournalProfile/actions';
 
-import initCodeMirrorMode from './editorCodeMirrorMode';
-// import {styles} from './editorStyles';
-import {codeMirrorStyles, codeMirrorStyleClasses} from './codeMirrorStyles';
-import {globalStyles} from '../../utils/styleConstants';
+import initCodeMirrorMode from './utils/editorCodeMirrorMode';
+import {codeMirrorStyles, codeMirrorStyleClasses} from './utils/codeMirrorStyles';
+import {insertText, createFocusDoc, addCodeMirrorKeys} from './utils/editorCodeFunctions';
+import {editorDefaultPubText, editorDefaultPageText} from './utils/editorDefaultText';
+import FirepadUserList from './utils/editorFirepadUserlist';
 
-import {insertText, createFocusDoc, addCodeMirrorKeys} from './editorCodeFunctions';
-import {editorDefaultText} from './editorDefaultText';
+import {generateTOC} from 'utils/generateTOC';
+import {globalStyles} from 'utils/styleConstants';
 
-import FirepadUserList from './editorFirepadUserlist';
-
-import {convertFirebaseToObject} from '../../utils/parsePlugins';
-import {generateTOC} from '../../markdown/generateTOC';
-
-import {globalMessages} from '../../utils/globalMessages';
+import {globalMessages} from 'utils/globalMessages';
 import {FormattedMessage} from 'react-intl';
+// import {Iterable} from 'immutable';
+import MarkdownWidgets from 'components/Markdown/MarkdownWidgets/MarkdownWidgets';
+import {FireBaseURL} from 'config';
 
-import {Iterable} from 'immutable';
-
-let FireBaseURL;
 let styles;
 
 const cmOptions = {
@@ -45,13 +43,14 @@ const cmOptions = {
 	autofocus: false,
 	mode: 'spell-checker',
 	backdrop: 'pubpubmarkdown',
-	extraKeys: {'Ctrl-Space': 'autocomplete'}
+	extraKeys: {'Ctrl-Space': 'autocomplete'},
+	dragDrop: false,
 };
 
 const Editor = React.createClass({
 	propTypes: {
 		pubData: PropTypes.object, // Used to get new pub titles
-		journalData: PropTypes.object,
+		appData: PropTypes.object,
 		editorData: PropTypes.object,
 		loginData: PropTypes.object, // User login data
 		slug: PropTypes.string, // equal to project uniqueTitle
@@ -88,7 +87,6 @@ const Editor = React.createClass({
 	},
 
 	componentDidMount() {
-		FireBaseURL = (process.env.NODE_ENV === 'production' && location.hostname !== 'pubpub-dev.herokuapp.com' && location.hostname !== 'pubpub-experiments.herokuapp.com') ? 'https://pubpub.firebaseio.com/' : 'https://pubpub-dev.firebaseio.com/';
 
 		if (! this.props.editorData.get('error')) {
 
@@ -101,7 +99,7 @@ const Editor = React.createClass({
 	},
 
 	componentWillReceiveProps(nextProps) {
-		if (nextProps.editorData.get('publishSuccess')) {
+		if (nextProps.editorData.get('saveVersionSuccess')) {
 			this.props.dispatch(pushState(null, ('/pub/' + nextProps.slug)));
 		}
 		if (!this.state.initialized && nextProps.editorData.getIn(['pubEditData', 'token'])) {
@@ -116,7 +114,9 @@ const Editor = React.createClass({
 	},
 
 	componentWillUnmount() {
-		debounce('backendSync', this.updatePubBackendData, 0, true)();
+		if (!this.props.editorData.getIn(['pubEditData', 'isPage'])) {
+			debounce('backendSync', this.updatePubBackendData, 0, true)();
+		}
 		this.props.dispatch(unmountEditor());
 	},
 
@@ -133,16 +133,20 @@ const Editor = React.createClass({
 				const firepadRef = new Firebase(FireBaseURL + this.props.slug + '/firepad');
 
 				// Load codemirror
+				cmOptions.isPage = this.props.editorData.getIn(['pubEditData', 'isPage']);
 				const codeMirror = CodeMirror(document.getElementById('codemirror-wrapper'), cmOptions);
 				this.cm = codeMirror;
 
 				// Get Login username for firepad use. Shouldn't be undefined, but set default in case.
 				const username = (this.props.loginData.get('loggedIn') === false) ? 'cat' : this.props.loginData.getIn(['userData', 'username']);
+				const name = (this.props.loginData.get('loggedIn') === false) ? 'cat' : this.props.loginData.getIn(['userData', 'name']);
 
 				// Initialize Firepad using codemirror and the ref defined above.
 				const firepad = Firepad.fromCodeMirror(firepadRef, codeMirror, {
 					userId: username,
-					defaultText: editorDefaultText(this.props.pubData.getIn(['createPubData', 'title']))
+					defaultText: this.props.editorData.getIn(['pubEditData', 'isPage'])
+						? editorDefaultPageText(this.props.appData.getIn(['journalData', 'journalName']))
+						: editorDefaultPubText(this.props.pubData.getIn(['createPubData', 'title']), {username: username, name: name})
 				});
 
 				new Firebase(FireBaseURL + '.info/connected').on('value', (connectedSnap)=> {
@@ -156,13 +160,18 @@ const Editor = React.createClass({
 				});
 
 				FirepadUserList.fromDiv(firepadRef.child('users'),
-					document.getElementById('userlist'), username, this.props.loginData.getIn(['userData', 'name']), this.props.loginData.getIn(['userData', 'thumbnail']));
+					document.getElementsByClassName('menuItem-activeCollabs')[0], username, this.props.loginData.getIn(['userData', 'name']), this.props.loginData.getIn(['userData', 'thumbnail']));
 
 				firepad.on('synced', (synced)=>{
+					if (!this.props.editorData.getIn(['pubEditData', 'isPage'])) {
+						debounce('saveStatusSync', ()=> {
+							if (this.isMounted()) {
+								this.updateSaveStatus(synced);
+							}
 
-					debounce('saveStatusSync', ()=> {
-						this.updateSaveStatus(synced);
-					}, 250)();
+						}, 250)();
+					}
+
 				});
 
 				firepad.on('ready', ()=>{
@@ -171,9 +180,15 @@ const Editor = React.createClass({
 
 				// need to unmount on change
 				codeMirror.on('change', this.onEditorChange);
+				codeMirror.on('mousedown', function(instance, evt) {
+					if (evt.which === 3) { // On right click. It was scrolling. Prevent that. Also can hijack for custom contextmenu?
+						evt.preventDefault();
+					}
+				});
 				addCodeMirrorKeys(codeMirror);
 
 				this.setState({initialized: true});
+
 			}
 		});
 
@@ -187,7 +202,7 @@ const Editor = React.createClass({
 
 	showPopupFromAutocomplete: function(completion) { // completion, element
 		const cords = this.cm.cursorCoords();
-		this.refs.pluginPopup.showAtPos(cords.left - 15, cords.top + 5);
+		// this.refs.pluginPopup.showAtPos(cords.left - 15, cords.top + 5);
 		if (completion) {
 			CodeMirror.off(completion, 'pick', this.showPopupFromAutocomplete);
 		}
@@ -212,46 +227,42 @@ const Editor = React.createClass({
 			};
 			this.props.dispatch(updatePubBackendData(this.props.slug, newPubData));
 		}
-
 	},
 
 	onEditorChange: function(cm, change) {
 
-		CodeMirror.commands.autocomplete(cm, CodeMirror.hint.plugins, {completeSingle: false});
-
-		if (cm.state.completionActive && cm.state.completionActive.data) {
-			const completion = cm.state.completionActive.data;
-			CodeMirror.on(completion, 'pick', this.showPopupFromAutocomplete);
-		}
-
 		// const start = performance.now();
 
-		const fullMD = cm.getValue();
+		let markdown = cm.getValue();
 
 		// Grab title, abstract, and authorsNote
-		const titleMatch = fullMD.match(/\[\[title:(.*?)\]\]/i);
+		const titleMatch = markdown.match(/title: (.*)/i);
 		const title = titleMatch && titleMatch.length ? titleMatch[1].trim() : '';
-		const abstractMatch = fullMD.match(/\[\[abstract:(.*?)\]\]/i);
+		const abstractMatch = markdown.match(/abstract:(.*)/i);
 		const abstract = abstractMatch && abstractMatch.length ? abstractMatch[1].trim() : '';
-		const authorsNoteMatch = fullMD.match(/\[\[authorsNote:(.*?)\]\]/i);
-		const authorsNote = authorsNoteMatch && authorsNoteMatch.length ? authorsNoteMatch[1].trim() : '';
 
 		// Generate TOC
-		const TOCs = generateTOC(fullMD);
+		const TOCs = generateTOC(markdown);
 
 		// Format assets and references
-		const assets = convertFirebaseToObject(this.state.firepadData.assets);
-		const references = convertFirebaseToObject(this.state.firepadData.references, true);
-		const selections = [];
-
-		// Strip markdown of title, abstract, authorsNote
-		const markdown = fullMD.replace(/\[\[title:.*?\]\]/gi, '').replace(/\[\[abstract:.*?\]\]/gi, '').replace(/\[\[authorsNote:.*?\]\]/gi, '').trim();
 
 		// const compiledMarkdown = performance.now();
 
-		if (this.state.title !== title || this.state.abstract !== abstract) {
+		if ((this.state.title !== title || this.state.abstract !== abstract) && !this.props.editorData.getIn(['pubEditData', 'isPage'])) {
 			debounce('backendSync', this.updatePubBackendData, 2000)();
 		}
+
+
+		/*
+		const cursor = cm.getCursor();
+		if (cursor) {
+			const cursorIndex = cm.indexFromPos(cursor);
+			const cursorString = '[[{"pluginType": "cursor"}]]';
+			markdown = markdown.slice(0, cursorIndex) + cursorString + markdown.slice(cursorIndex);
+		}
+		*/
+
+
 		// Set State to trigger re-render
 		this.setState({
 			markdown: markdown,
@@ -260,10 +271,6 @@ const Editor = React.createClass({
 			codeMirrorChange: change,
 			title: title,
 			abstract: abstract,
-			authorsNote: authorsNote,
-			assetsObject: assets,
-			referencesObject: references,
-			selectionsArray: selections,
 		});
 
 		// const saveState = performance.now();
@@ -287,17 +294,17 @@ const Editor = React.createClass({
 
 	// Toggle formatting dropdown
 	// Only has an effect when in livePreview mode
-	toggleFormatting: function() {
-		return this.props.dispatch(toggleFormatting());
-	},
+	// toggleFormatting: function() {
+	// 	return this.props.dispatch(toggleFormatting());3
+	// },
 
 	// Toggle Table of Contents dropdown
 	// Only has an effect when in livePreview mode
-	toggleTOC: function() {
-		return this.props.dispatch(toggleTOC());
-	},
+	// toggleTOC: function() {
+	// 	return this.props.dispatch(toggleTOC());
+	// },
 
-	publishVersion: function(versionDescription) {
+	saveVersion: function(versionDescription, publish) {
 
 		const authors = [];
 		for (const collaborator in this.state.firepadData.collaborators) {
@@ -310,28 +317,29 @@ const Editor = React.createClass({
 			slug: this.props.slug,
 			title: this.state.title,
 			abstract: this.state.abstract,
-			authorsNote: this.state.authorsNote,
 			markdown: this.state.markdown,
 			authors: authors,
-			assets: this.state.firepadData.assets,
-			references: this.state.firepadData.references,
-			style: this.state.firepadData.settings.pubStyle,
+			// assets: this.state.firepadData.assets,
+			// references: this.state.firepadData.references,
+			// style: this.state.firepadData.settings.pubStyle,
 
-			styleRawDesktop: this.state.firepadData.settings.styleRawDesktop,
-			styleRawMobile: this.state.firepadData.settings.styleRawMobile,
-			styleScoped: this.state.firepadData.settings.styleScoped,
+			styleDesktop: this.state.firepadData.settings ? this.state.firepadData.settings.styleDesktop : '',
+			styleMobile: this.state.firepadData.settings ? this.state.firepadData.settings.styleMobile : '',
+			styleScoped: this.state.firepadData.settings ? this.state.firepadData.settings.styleScoped : '',
 
-			publishNote: versionDescription,
+			versionNote: versionDescription,
+
+			isPublished: publish,
 		};
 
 		this.props.dispatch(clearPub());
 
 		// This should perhaps be done on the backend in one fell swoop - rather than having two client side calls.
-		if (this.props.journalData.get('baseSubdomain')) {
-			this.props.dispatch(submitPubToJournal(this.props.editorData.getIn(['pubEditData', '_id']), this.props.journalData.getIn(['journalData']).toJS()));
+		if (this.props.appData.get('baseSubdomain') && publish) {
+			this.props.dispatch(submitPubToJournal(this.props.editorData.getIn(['pubEditData', '_id']), this.props.appData.getIn(['journalData']).toJS()));
 		}
 
-		this.props.dispatch(publishVersion(newVersion));
+		this.props.dispatch(saveVersion(newVersion));
 
 	},
 
@@ -347,7 +355,7 @@ const Editor = React.createClass({
 		return ()=>{
 			const cm = this.getActiveCodemirrorInstance();
 			insertText(cm, formatting, this.showPopupFromAutocomplete);
-			this.toggleFormatting();
+			// this.toggleFormatting();
 		};
 	},
 
@@ -398,28 +406,158 @@ const Editor = React.createClass({
 	},
 
 	toggleStyleMode: function() {
-		this.setState({stylePaneActive: !this.state.stylePaneActive});
+		this.closeModalHandler();
+		if (this.props.editorData.get('viewMode') === 'edit') {
+			this.props.dispatch(toggleEditorViewMode());
+			this.setState({stylePaneActive: true});
+		} else {
+			this.setState({stylePaneActive: !this.state.stylePaneActive});
+		}
+
 	},
 	saveStyle: function(newStyleStringDesktop, newStyleStringMobile) {
 		const ref = new Firebase(FireBaseURL + this.props.slug + '/editorData/settings' );
 		ref.update({
-			styleRawDesktop: newStyleStringDesktop,
-			styleRawMobile: newStyleStringMobile,
+			styleDesktop: newStyleStringDesktop,
+			styleMobile: newStyleStringMobile,
 		});
-		this.props.dispatch(saveStyle(newStyleStringDesktop, newStyleStringMobile));
+		const isPage = this.props.editorData.getIn(['pubEditData', 'isPage']);
+		this.props.dispatch(saveStyle(newStyleStringDesktop, newStyleStringMobile, isPage));
+	},
+	getEditorFont: function() {
+		const editorFont = this.props.loginData ? this.props.loginData.getIn(['userData', 'settings', 'editorFont']) : undefined;
+
+		switch (editorFont) {
+		case 'serif':
+			console.log('in the switch and got serif');
+			return {fontFamily: 'Helvetica Neue,Helvetica,Arial,sans-serif'};
+		case 'sans-serif':
+			console.log('in the switch and got sans');
+			return {fontFamily: 'Lato'};
+		case 'mono':
+			console.log('in the switch and got mono');
+			return {fontFamily: 'Courier'};
+		default:
+			console.log('in the switch and got def');
+			return {fontFamily: 'Courier'};
+		}
+
+	},
+
+	printIt: function(name) {
+		return ()=>{
+			console.log('clicked ', name);
+		};
+	},
+	buildEditorMenuItems: function() {
+		const isPage = this.props.editorData.getIn(['pubEditData', 'isPage']);
+		const output = [];
+		if (!isPage) {
+			output.push(
+				{key: 'file', string: <FormattedMessage id="editor.File" defaultMessage="File"/>, function: ()=>{}, children: [
+					{key: 'style', string: <FormattedMessage id="editor.Style" defaultMessage="Style"/>, function: this.toggleStyleMode},
+					{key: 'Settings', string: <FormattedMessage id="editor.EditorSettings" defaultMessage="Editor Settings"/>, function: this.openModalHandler('Style')}
+				]}
+			);
+		} else {
+			output.push(
+				{key: 'file', string: <FormattedMessage id="editor.File" defaultMessage="File"/>, function: ()=>{}, children: [
+					{key: 'Settings', string: <FormattedMessage id="editor.EditorSettings" defaultMessage="Editor Settings"/>, function: this.openModalHandler('Style')}
+				]}
+			);
+		}
+		let formattingItems = [
+			{key: 'header1', string: <Formatting type={'header1'} />, function: this.insertFormatting('header1')	},
+			{key: 'header2', string: <Formatting type={'header2'} />, function: this.insertFormatting('header2')	},
+			{key: 'header3', string: <Formatting type={'header3'} />, function: this.insertFormatting('header3')	},
+			{key: 'bold', string: <Formatting type={'bold'} />, function: this.insertFormatting('bold')	},
+			{key: 'italic', string: <Formatting type={'italic'} />, function: this.insertFormatting('italic')	},
+			{key: 'ol', string: <Formatting type={'ol'} />, function: this.insertFormatting('ol')	},
+			{key: 'ul', string: <Formatting type={'ul'} />, function: this.insertFormatting('ul')	},
+			{key: 'link', string: <Formatting type={'link'} />, function: this.insertFormatting('link')	},
+			{key: 'image', string: <Formatting type={'image'} />, function: this.insertFormatting('image')	},
+			{key: 'video', string: <Formatting type={'video'} />, function: this.insertFormatting('video')	},
+			{key: 'cite', string: <Formatting type={'cite'} />, function: this.insertFormatting('cite')	},
+			{key: 'quote', string: <Formatting type={'quote'} />, function: this.insertFormatting('quote')	},
+			{key: 'linebreak', string: <Formatting type={'linebreak'} />, function: this.insertFormatting('linebreak')	},
+		];
+		if (isPage) {
+			const formattingItemsPage = [
+				{key: 'pubList', string: <Formatting type={'pubList'} />, function: this.insertFormatting('pubList')	},
+				{key: 'collectionList', string: <Formatting type={'collectionList'} />, function: this.insertFormatting('collectionList')	},
+				{key: 'pageLink', string: <Formatting type={'pageLink'} />, function: this.insertFormatting('pageLink')	},
+			];
+			formattingItems = formattingItems.concat(formattingItemsPage);
+		}
+		output.push({key: 'formatting', string: <FormattedMessage {...globalMessages.Formatting}/>, function: ()=>{}, children: formattingItems});
+		output.push({key: 'assets', string: <FormattedMessage {...globalMessages.assets}/>, function: this.openModalHandler('Assets') });
+		output.push({key: 'collaborators', string: <FormattedMessage {...globalMessages.collaborators}/>, function: this.openModalHandler('Collaborators')});
+		output.push({key: 'activeCollabs', string: '', function: ()=>{}, notButton: true});
+		output.push({key: 'saveVersion', string: <FormattedMessage id="editor.SaveVersion" defaultMessage="Save Version"/>, right: true, function: this.openModalHandler('SaveVersion')});
+		if (isPage) {
+			output.push({key: 'style', string: <FormattedMessage id="editor.Style" defaultMessage="Style"/>, right: true, function: this.toggleStyleMode});
+		} else {
+			output.push({key: 'preview', string: <FormattedMessage {...globalMessages.Preview}/>, right: true, function: this.toggleLivePreview});
+		}
+		output.push({key: 'saveStatus',
+			string: (()=>{
+				switch (this.state.editorSaveStatus) {
+				case 'saved':
+					return <FormattedMessage id="editor.pubSaved" defaultMessage="Pub Saved"/>;
+				case 'saving':
+					return <FormattedMessage id="editor.pubSaving" defaultMessage="Pub Saving..."/>;
+				default:
+					return <FormattedMessage id="editor.disconnected" defaultMessage="Disconnected"/>;
+				}
+				// this.state.editorSaveStatus === 'saved' ? 'Pub Saved' : 'Pub Saving...'}
+			})(),
+			function: ()=>{},
+			right: true,
+			notButton: true,
+		});
+		return output;
+
+	},
+
+	requestAssetUpload: function(assetType) {
+		return this.props.dispatch(waitForUpload(assetType));
+	},
+
+	componentDidUpdate: function() {
+
+		const shouldScroll = (this.props.loginData.getIn(['userData', 'settings', 'editorScrollCursor']) !== 'off');
+
+		if (!shouldScroll) {
+			return;
+		}
+
+		const cursorElem = document.querySelector('.markdown-cursor');
+		if (cursorElem) {
+			if (cursorElem.scrollIntoViewIfNeeded) {
+				cursorElem.scrollIntoViewIfNeeded();
+			} else {
+				cursorElem.scrollIntoView();
+			}
+		}
 	},
 
 	render: function() {
-
-		const isLivePreview = (Iterable.isIterable(this.props.editorData)) ? (this.props.editorData.get('viewMode') === 'preview') : false;
-
-		const editorData = this.props.editorData;
-		const viewMode = this.props.editorData.get('viewMode');
+		// return <h1 style={{textAlign: 'center', margin: '50px auto', width: '80%'}}>The PubPub Editor is currently down for maintenance. We'll be back shortly!</h1>;
+		// const editorData = this.props.editorData;
+		const viewMode = this.props.editorData.getIn(['pubEditData', 'isPage']) ? 'preview' : this.props.editorData.get('viewMode');
 		const isReader = this.props.editorData.getIn(['pubEditData', 'isReader']);
-		const showBottomLeftMenu = this.props.editorData.get('showBottomLeftMenu');
-		const showBottomRightMenu = this.props.editorData.get('showBottomRightMenu');
+		// const showBottomLeftMenu = this.props.editorData.get('showBottomLeftMenu');
+		// const showBottomRightMenu = this.props.editorData.get('showBottomRightMenu');
 		const loadStatus = this.props.editorData.get('status');
 		const darkMode = this.props.loginData.getIn(['userData', 'settings', 'editorColor']) === 'dark';
+
+		const widgetMode = viewMode === 'preview' ? 'preview' : 'full';
+
+		const userAssets = this.props.loginData.getIn(['userData', 'assets']) ? this.props.loginData.getIn(['userData', 'assets']).toJS() : [];
+		const references = {};
+
+		const requestedAsset = (this.props.editorData.get('requestedAsset')) ? this.props.editorData.get('requestedAsset').toJS() : null;
+		const requestedAssetStatus = this.props.editorData.get('waitForUpload');
 
 		const referencesList = [];
 		for ( const key in this.state.firepadData.references ) {
@@ -433,9 +571,17 @@ const Editor = React.createClass({
 			title: 'Edit - ' + this.props.editorData.getIn(['pubEditData', 'title'])
 		};
 
+		const editorMenuItems = this.buildEditorMenuItems();
+
+		let editorWrapperClass = 'editor-container';
+		if (viewMode === 'preview') {
+			editorWrapperClass += ' editor-preview';
+		}
+
 		return (
 
-			<div style={[styles.editorContainer, darkMode && styles.editorContainerDark]} className={'editor-container'}>
+
+			<div style={[styles.editorContainer, darkMode && styles.editorContainerDark]} className={editorWrapperClass}>
 
 				<Helmet {...metaData} />
 
@@ -450,42 +596,42 @@ const Editor = React.createClass({
 					: <div>
 
 						{/*	Component for all modals and their backdrop. */}
-						<EditorModals publishVersionHandler={this.publishVersion} />
+						<EditorModals saveVersionHandler={this.saveVersion} />
 
-						{/* Top Nav. Fixed to the top of the editor page, just below the main pubpub bar */}
-						<EditorTopNav
-							status={editorData.get('status')}
-							darkMode={darkMode}
-							openModalHandler={this.openModalHandler}
-							editorSaveStatus={this.state.editorSaveStatus}
-							toggleLivePreviewHandler={this.toggleLivePreview}
-							viewMode={viewMode} />
+						{/* Editor Menu */}
+						<div id="editor-menu-wrapper" style={[globalStyles.hiddenUntilLoad, globalStyles[loadStatus], styles.editorMenuWrapper]}>
+							<Menu items={editorMenuItems}/>
+						</div>
 
-						{/*	Horizontal loader line - Separates top bar from rest of editor page */}
+						{/*	Horizontal loader line - Separates menu bar from rest of editor page */}
 						<div style={styles.editorLoadBar}>
 							<LoaderDeterminate value={loadStatus === 'loading' ? 0 : 100}/>
 						</div>
-
-						{/* Bottom Nav */}
-						<EditorBottomNav
-							viewMode={viewMode}
-							loadStatus={loadStatus}
-							darkMode={darkMode}
-							showBottomLeftMenu={showBottomLeftMenu}
-							showBottomRightMenu={showBottomRightMenu}
-							toggleTOCHandler={this.toggleTOC}
-							toggleFormattingHandler={this.toggleFormatting}
-							activeFocus={this.state.activeFocus}
-							focusEditorHandler={this.focusEditor}
-							tocH1={this.state.tocH1}
-							insertFormattingHandler={this.insertFormatting}/>
 
 						{/* ---------------------- */}
 						{/* Markdown Editing Block */}
 						{/* ---------------------- */}
 						<div id="editor-text-wrapper" style={[globalStyles.hiddenUntilLoad, globalStyles[loadStatus], styles.editorMarkdown, styles[viewMode].editorMarkdown, !isReader && styles[viewMode].editorMarkdownIsEditor]}>
 
-							<EditorPluginPopup ref="pluginPopup" isLivePreview={isLivePreview} references={this.state.firepadData.references} assets={this.state.firepadData.assets} /* selections={this.state.firepadData.selections} */ activeFocus={this.state.activeFocus} codeMirrorChange={this.state.codeMirrorChange}/>
+
+							{(this.state.firepadInitialized) ?
+								<MarkdownWidgets
+									requestedAsset={requestedAsset}
+									ref="widgethandler"
+									mode={widgetMode}
+									references={references}
+									assets={userAssets}
+									activeFocus={this.state.activeFocus}
+									requestAssetUpload={this.requestAssetUpload}
+									requestedAssetStatus={requestedAssetStatus}
+									cm={this.cm} /> : null}
+							{/*
+							<EditorPluginPopup ref="pluginPopup" isLivePreview={isLivePreview} references={this.state.firepadData.references} assets={this.state.firepadData.assets} activeFocus={this.state.activeFocus} codeMirrorChange={this.state.codeMirrorChange}/>
+							*/}
+
+							{/* <div style={[styles.editorHeader]}>
+								<input type="text" defaultValue="My Title" style={[styles.headerTitleInput, this.getEditorFont()]} />
+							</div> */}
 
 							{/* Insertion point for codemirror and firepad */}
 							<div style={[this.state.activeFocus !== '' && styles.hiddenMainEditor]}>
@@ -502,7 +648,7 @@ const Editor = React.createClass({
 						{/* ------------------ */}
 						<div id="editor-live-preview-wrapper" style={[globalStyles.hiddenUntilLoad, globalStyles[loadStatus], styles.editorPreview, styles[viewMode].editorPreview]} className={'editorPreview'}>
 
-							<div className={'editorPreviewNav'} style={styles.bodyNavBar}>
+							{/* <div className={'editorPreviewNav'} style={styles.bodyNavBar}>
 								<div key={'previewBodyNav0'} style={[styles.bodyNavItem, viewMode === 'read' && globalStyles.hidden, styles.undoHiddenInMobile]} onClick={this.switchPreviewPaneMode('comments')}>
 									Editor Comments
 								</div>
@@ -516,7 +662,7 @@ const Editor = React.createClass({
 									Style
 								</div>
 
-							</div>
+							</div> */}
 
 							<div className="editorBodyView pubScrollContainer" style={[styles.previewBlockWrapper, styles.previewBlockWrapperShow]}>
 
@@ -528,12 +674,15 @@ const Editor = React.createClass({
 									<div id="editor-close-bar" style={[this.state.previewPaneMode && styles.editorCloseBar]} onClick={this.switchPreviewPaneMode(undefined)}></div>
 									<PubBody
 										status={'loaded'}
+										isPublished={this.props.editorData.getIn(['pubEditData', 'isPublished'])}
+										isPage={this.props.editorData.getIn(['pubEditData', 'isPage'])}
 										title={this.state.title}
 										abstract={this.state.abstract}
 										authorsNote={this.state.authorsNote}
 										minFont={13}
 										maxFont={25}
 										markdown={this.state.markdown}
+										markdownChange={this.state.codeMirrorChange}
 										authors={this.getAuthorsArray()}
 										showPubHighlights={this.state.previewPaneMode === 'discussions'}
 										showPubHighlightsComments={this.state.previewPaneMode === 'comments' || viewMode === 'read'}
@@ -612,8 +761,8 @@ const Editor = React.createClass({
 								toggleStyleMode={this.toggleStyleMode}
 								saveStyleHandler={this.saveStyle}
 								saveStyleError={this.props.editorData.get('styleError')}
-								defaultDesktop={this.state.firepadData && this.state.firepadData.settings ? this.state.firepadData.settings.styleRawDesktop : undefined}
-								defaultMobile={this.state.firepadData && this.state.firepadData.settings ? this.state.firepadData.settings.styleRawMobile : undefined} />
+								defaultDesktop={this.state.firepadData && this.state.firepadData.settings ? this.state.firepadData.settings.styleDesktop : undefined}
+								defaultMobile={this.state.firepadData && this.state.firepadData.settings ? this.state.firepadData.settings.styleMobile : undefined} />
 
 						</div>
 
@@ -622,6 +771,7 @@ const Editor = React.createClass({
 
 					</div>
 				}
+
 			</div>
 		);
 	}
@@ -631,7 +781,7 @@ const Editor = React.createClass({
 export default connect( state => {
 	return {
 		pubData: state.pub,
-		journalData: state.journal,
+		appData: state.app,
 		editorData: state.editor,
 		slug: state.router.params.slug,
 		loginData: state.login
@@ -648,6 +798,12 @@ styles = {
 		'@media screen and (min-resolution: 3dppx), screen and (max-width: 767px)': {
 			height: 'calc(100vh - ' + globalStyles.headerHeightMobile + ')',
 		},
+	},
+	editorMenuWrapper: {
+		// backgroundColor: '#F0F0F0',
+		backgroundColor: 'white',
+		fontSize: '0.9em',
+		// fontWeight: '300',
 	},
 	editorContainerDark: {
 		backgroundColor: '#272727',
@@ -778,9 +934,9 @@ styles = {
 		},
 	},
 	previewBlockWrapper: {
-		width: 'calc(100% - 20px)',
-		height: 'calc(100% - 50px)',
-		padding: '10px',
+		width: 'calc(100% - 0px)',
+		height: 'calc(100% - 0px)',
+		padding: '0px',
 		overflow: 'hidden',
 		overflowY: 'scroll',
 		position: 'absolute',
@@ -840,18 +996,32 @@ styles = {
 	},
 
 	editorMarkdown: {
-		margin: '30px 0px',
+		margin: '0px 0px',
 		width: '50vw',
 		zIndex: 5,
 
 		position: 'fixed',
-		height: 'calc(100vh - 60px - 2*' + globalStyles.headerHeight + ')',
+		height: 'calc(100vh - 60px)',
 		overflow: 'hidden',
 		overflowY: 'scroll',
 		'@media screen and (min-resolution: 3dppx), screen and (max-width: 767px)': {
 			overflow: 'hidden',
 		}
 	},
+	// editorHeader: {
+	// 	padding: '0px 25px',
+	// },
+	// headerTitleInput: {
+	// 	height: '50px',
+	// 	width: '100%',
+	// 	borderWidth: '0px 0px 1px 0px',
+	// 	borderColor: 'rgba(0,0,0,0.2)',
+	// 	backgroundColor: 'transparent',
+	// 	fontSize: '33px',
+	// 	fontWeight: 'bold',
+	// 	marginBottom: '10px',
+	// 	outline: 'none',
+	// },
 	editorPreview: {
 		width: 'calc(50% - 0px)',
 		backgroundColor: '#fff',
@@ -916,7 +1086,7 @@ styles = {
 		editorMarkdown: {
 			transition: '.352s linear transform, .3s linear opacity .25s, 0s linear padding .352s, 0s linear left .352s',
 			transform: 'translateX(0%)',
-			padding: globalStyles.headerHeight + ' 25vw',
+			padding: '0px 25vw',
 			left: 0,
 		},
 		editorPreview: {
@@ -941,7 +1111,7 @@ styles = {
 		editorMarkdown: {
 			transition: '.352s linear transform, .3s linear opacity .25s',
 			transform: 'translateX(-50%)',
-			padding: globalStyles.headerHeight + ' 0px',
+			padding: '0px 0px',
 			left: '25vw'
 		},
 		editorPreview: {

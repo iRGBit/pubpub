@@ -109,15 +109,15 @@ app.use((req, res) => {
 					res.status(status);
 				}
 
-				const htmltest = ReactDOM.renderToString(
+				const serverHTML = ReactDOM.renderToString(
 					<Html radiumConfig={{userAgent: req.headers['user-agent']}} component={component} />
 				);
 				const mainBundle = webpackIsomorphicTools.assets().javascript.main;
 				const head = Helmet.rewind();
-				
+
 				let dynamicStyle;
 				const pathname = store.getState().router.location.pathname;
-				
+
 				if (pathname.substring(0, 5) === '/pub/' && pathname.substring(pathname.length - 6, pathname.length) !== '/draft' && store.getState().pub.getIn(['pubData', 'history'])) {
 					// source = store.getState().pub.getIn(['pubData', 'history']);
 					const versionIndex = store.getState().router.location.query.version !== undefined && store.getState().router.location.query.version > 0 && store.getState().router.location.query.version <= (store.getState().pub.getIn(['pubData', 'history']).size - 1)
@@ -125,9 +125,21 @@ app.use((req, res) => {
 						: store.getState().pub.getIn(['pubData', 'history']).size - 1;
 					dynamicStyle = store.getState().pub.getIn(['pubData', 'history', versionIndex, 'styleScoped']);
 				}
+				if (pathname === '/') {
+					dynamicStyle = store.getState().journal.getIn(['journalData', 'landingPage', 'styleScoped']);
+				}
+
+
+				let fbPagesTag;
+				if (store.getState().journal && store.getState().journal.getIn(['journalData', 'fbPagesTag'])) {
+					const tag = store.getState().journal.getIn(['journalData', 'fbPagesTag']);
+					fbPagesTag = `<meta property="fb:pages" content="${tag}" />`;
+				} else {
+					fbPagesTag = `<meta property="fb:pages" content="228105957546675" />`;
+				}
 
 				const rssRel = pathname === '/' ? 'alternate' : 'home';
-				
+
 				res.send(`<!doctype html>
 					<html lang="en-us">
 						<head>
@@ -135,15 +147,23 @@ app.use((req, res) => {
 							<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 							<meta name="google-site-verification" content="jmmJFnkSOeIEuS54adOzGMwc0kwpsa8wQ-L4GyPpPDg" />
 							<meta name="referrer" content="always">
-
+							${fbPagesTag}
 							${head.title.toString()}
 							${head.meta.toString()}
 
 							<link rel=${rssRel} type="application/rss+xml" title="RSS" href="/data/rss.xml" />
 							<link rel="shortcut icon" href="/favicon.ico" />
-							<link href='https://fonts.googleapis.com/css?family=Lato:300,300italic,700,700italic,900italic|Lora:400,400italic,700,700italic' rel='stylesheet' type='text/css' />
+							<link href='https://fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic,900italic|Lora:400,400italic,700,700italic' rel='stylesheet' type='text/css' />
 
 							<link href='https://fonts.googleapis.com/css?family=Alegreya+Sans+SC|ABeeZee' rel='stylesheet' type='text/css'>
+							<link href='https://fonts.googleapis.com/css?family=Merriweather:400italic,700italic' rel='stylesheet' type='text/css'>
+							<style>
+								@font-face { font-family: Yrsa; font-weight: 400; src: url('https://s3.amazonaws.com/pubpub-statics/Yrsa-Regular.otf'); }
+								@font-face { font-family: Yrsa; font-weight: 700; src: url('https://s3.amazonaws.com/pubpub-statics/Yrsa-Bold.otf');}
+								@font-face { font-family: ClearSans; font-weight: 100; src: url('https://s3.amazonaws.com/pubpub-statics/ClearSans-Light.ttf');}
+								@font-face { font-family: ClearSans; font-weight: 400; src: url('https://s3.amazonaws.com/pubpub-statics/ClearSans-Regular.ttf');}
+								@font-face { font-family: ClearSans; font-weight: 700; src: url('https://s3.amazonaws.com/pubpub-statics/ClearSans-Bold.ttf');}
+							</style>
 
 							<!-- We could dynamically load these in Editor.jsx
 							<!-- If we have to load more local css - we should bundle it all into one minified file and load it here. -->
@@ -153,6 +173,8 @@ app.use((req, res) => {
 							<link href='/css/highlightdefault.css' rel='stylesheet' type='text/css' />
 							<link href='/css/react-select.min.css' rel='stylesheet' type='text/css' />
 							<link href='/css/basePub.css' rel='stylesheet' type='text/css' />
+							<link href='/css/basePage.css' rel='stylesheet' type='text/css' />
+							<link href='/css/menu.css' rel='stylesheet' type='text/css' />
 							<style id="dynamicStyle">${dynamicStyle}</style>
 
 							<link href='https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.9.0/addon/hint/show-hint.css' rel='stylesheet' type='text/css' />
@@ -175,14 +197,16 @@ app.use((req, res) => {
 							<script src="/js/typo.js"></script>
 							<script src="/js/spellcheck.js"></script>
 							<script src="https://cdn.ravenjs.com/2.1.0/raven.min.js"></script>
-							
+							<script src='https://www.google.com/recaptcha/api.js'></script>
+
 						</head>
 
 						<body style="width: 100%; margin: 0;">
-							<div id="content">${htmltest}</div>
+							<div id="content">${serverHTML}</div>
 							<script>
 					          window.__INITIAL_STATE__ = ${JSON.stringify(store.getState())};
 					        </script>
+
 							<script src=${mainBundle}></script>
 						</body>
 					</html>

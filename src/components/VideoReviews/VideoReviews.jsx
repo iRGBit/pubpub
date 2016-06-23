@@ -51,6 +51,8 @@ const VideoReviews = React.createClass({
 
 		const self = this;
 
+		console.log('STarting to record videos!');
+
 		this.setState({requesting: true});
 
 		this.startRecordingDate = new Date().getTime();
@@ -126,8 +128,9 @@ const VideoReviews = React.createClass({
 		}.bind(this));
 
 		if (!this.isFirefox) {
-			this.recordVideo.stopRecording();
-			onStopRecording();
+			this.recordVideo.stopRecording((videoURL) => {
+				onStopRecording();
+			});
 		}
 
 	},
@@ -194,6 +197,7 @@ const VideoReviews = React.createClass({
 		files.isFirefox = this.isFirefox;
 
 
+		// 		xhr('http://localhost:8050/upload', JSON.stringify(files), function(_fileName) {
 		xhr('https://videoreviews.herokuapp.com/upload', JSON.stringify(files), function(_fileName) {
 
 			this.props.onSave(_fileName, duration);

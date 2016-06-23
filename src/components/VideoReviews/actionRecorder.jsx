@@ -74,6 +74,7 @@ const VideoReviews = React.createClass({
 	},
 
 	pressMouse: function(evt) {
+		return;
 		const paint = {};
 
 		const boundingRect = document.getElementById('pubContent').getBoundingClientRect();
@@ -99,6 +100,7 @@ const VideoReviews = React.createClass({
 		const startX = (startPos.x * docWidth) + leftOffset;
 		const startY = (startPos.y * docHeight) + topOffset;
 
+		/*
 		var c = document.getElementById("drawCanvas");
 		var ctx = c.getContext("2d");
 		ctx.beginPath();
@@ -107,7 +109,7 @@ const VideoReviews = React.createClass({
 		ctx.stroke();
 
 		this.lastPaint = paint;
-
+		*/
 		// this.mouseElem.style.left = (evt.pageX ) + 'px';
 		// this.mouseElem.style.top = (evt.pageY) + 'px';
 
@@ -216,9 +218,11 @@ const VideoReviews = React.createClass({
 		return (
 
 			<div>
+			{/*
 			<canvas style={styles.canvas} id="drawCanvas">
 				Your browser does not support the HTML5 canvas tag.
 			</canvas>
+			*/}
 
 			<Portal portalId="actionRecorderPointer">
 				<div ref={(ref) => this.mouseElem = ref} style={[styles.mouse, styles.show(this.state.recording)]}>

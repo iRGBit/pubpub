@@ -3,7 +3,7 @@
 /**
  * THIS IS THE ENTRY POINT FOR THE CLIENT, JUST LIKE server.js IS THE ENTRY POINT FOR THE SERVER.
  */
-import 'babel-polyfill';
+import 'babel-polyfill'; 
 import React from 'react';
 import ReactDOM from 'react-dom';
 import createHistory from 'history/lib/createBrowserHistory';
@@ -56,5 +56,5 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 if (__DEVTOOLS__ && !window.devToolsExtension) {
-	require('./containers/DevTools/createDevToolsWindow')(store);
+	require('utils/createDevToolsWindow')(store);
 }
