@@ -43,14 +43,14 @@ const ActionPlayer = React.createClass({
 		this.restoreSelections(this.props.actions);
 		this.setState({playing: true});
 		this.refs.durationTimer.play();
-		document.querySelector('.centerBar').addEventListener('scroll', this.scroll);
+		document.body.addEventListener('scroll', this.scroll);
 	},
 
 	stop: function() {
 		this.clearSelections();
 		this.setState({playing: false});
 		this.refs.durationTimer.stop();
-		document.querySelector('.centerBar').removeEventListener('scroll', this.scroll);
+		document.body.removeEventListener('scroll', this.scroll);
 	},
 
 	scroll: function(event) {
@@ -108,10 +108,10 @@ const ActionPlayer = React.createClass({
 			mouseY = (pos.y * docHeight) + topOffset;
 		} else {
 			mouseX = pos.x + leftOffset;
-			mouseY = pos.y - document.querySelector('.centerBar').scrollTop;
+			mouseY = pos.y - document.body.scrollTop;
 		}
 
-		const clientHeight = document.documentElement.clientHeight;
+		const clientHeight = document.documentElement.clientHeight + document.body.scrollTop;
 
 		let clamped = true;
 
@@ -156,8 +156,9 @@ const ActionPlayer = React.createClass({
 		};
 
 		const playScroll = function(scroll) {
+			console.log('Playing scroll!', scroll.pos);
 			const pos = scroll.pos;
-			document.querySelector('.centerBar').scrollTop = pos;
+			document.body.scrollTop = pos;
 		};
 
 

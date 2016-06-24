@@ -99,6 +99,8 @@ const VideoReviews = React.createClass({
 
 	stopRecording: function() {
 
+		console.log('Stopping recording!');
+
 		// this.cameraPreview.stop();
 		this.cameraPreview.src = null;
 		this.setState({recording: false, saving: true});
@@ -124,13 +126,16 @@ const VideoReviews = React.createClass({
 		}.bind(this);
 
 		this.recordAudio.stopRecording(function() {
+			console.log('Stopped audio recording!!');
 			if (this.isFirefox) onStopRecording();
 		}.bind(this));
 
 		if (!this.isFirefox) {
 			this.recordVideo.stopRecording((videoURL) => {
+				console.log('Stopped video recording!!');
 				onStopRecording();
 			});
+
 		}
 
 	},

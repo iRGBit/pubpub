@@ -119,7 +119,7 @@ const VideoReviews = React.createClass({
 
 	scroll: function(evt) {
 		const scroll = {};
-		scroll.pos = document.querySelector('.centerBar').scrollTop;
+		scroll.pos = document.body.scrollTop;
 		scroll.type = 'scroll';
 		scroll.time = new Date().getTime() - this.startRecordingDate;
 		this.actions.push(scroll);
@@ -168,7 +168,7 @@ const VideoReviews = React.createClass({
 	componentWillUnmount: function() {
 		if (this.state.recording === true) {
 			document.removeEventListener('selectionchange', this.selected);
-			document.querySelector('.centerBar').removeEventListener('scroll', this.scroll);
+			window.removeEventListener('scroll', this.scroll);
 			document.getElementById('pubContent').removeEventListener('mousemove', this.mouse);
 			document.getElementById('pubContent').removeEventListener('mousedown', this.pressMouse);
 
@@ -180,7 +180,7 @@ const VideoReviews = React.createClass({
 		const self = this;
 		self.setState({recording: true, seconds: 0});
 		document.addEventListener('selectionchange', self.selected);
-		document.querySelector('.centerBar').addEventListener('scroll', self.scroll);
+		window.addEventListener('scroll', self.scroll);
 		document.getElementById('pubContent').addEventListener('mousemove', self.mouse);
 		document.getElementById('pubContent').addEventListener('mousedown', self.pressMouse);
 
@@ -204,7 +204,7 @@ const VideoReviews = React.createClass({
 		if (this.counterInterval) clearInterval(this.counterInterval);
 		this.setState({recording: false});
 		document.removeEventListener('selectionchange', this.selected);
-		document.querySelector('.centerBar').removeEventListener('scroll', this.scroll);
+		window.removeEventListener('scroll', this.scroll);
 		document.getElementById('pubContent').removeEventListener('mousemove', this.mouse);
 	},
 

@@ -158,7 +158,6 @@ const VideoReviewPlugin = React.createClass({
 					<source src={(this.state.video && this.state.playing) ? 'https://s3-us-west-2.amazonaws.com/videoreview/' + this.state.video : null} type="video/webm" />
 					<Controls>
 						<Play />
-						<Time />
 						<Mute />
 						<CustomComponent/>
 					</Controls>
@@ -206,6 +205,7 @@ styles = {
 		const cameraStyle = {
 			marginTop: '25px',
 			marginBottom: '50px',
+			width: '100%',
 		};
 		if (recording) {
 			cameraStyle.display = 'block';
@@ -225,7 +225,7 @@ styles = {
 	},
 	preview: {
 		border: 'none',
-		width: 'auto',
+		width: '100%',
 		display: 'block',
 		margin: 'auto',
 	},
