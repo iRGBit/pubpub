@@ -1,6 +1,6 @@
 import {wilsonScore} from 'decay';
 
-export function sortDiscussions({sortBy, discussionsData, randomSeed, authors}) {
+export function sortDiscussions(sortBy, discussionsData, randomSeed, authors) {
 
   console.log(sortBy);
 
@@ -11,7 +11,7 @@ export function sortDiscussions({sortBy, discussionsData, randomSeed, authors}) 
 		console.log('entered BEST');
 
 
-    const scoredDiscussions = scoreDiscussions(discussionsData, randomSeed, authors);
+	const scoredDiscussions = scoreDiscussions(discussionsData, randomSeed, authors);
 
 		sortedDiscussions = scoredDiscussions.sort(function(aIndex, bIndex) {
 
@@ -41,8 +41,8 @@ export function sortDiscussions({sortBy, discussionsData, randomSeed, authors}) 
 
 		sortedDiscussions = discussionsData.sort(function(aIndex, bIndex){
 
-			const aUpvotes = aIndex.yays-aIndex.nays+1
-			const bUpvotes = bIndex.yays-bIndex.nays+1
+			const aUpvotes = aIndex.linkData.metadata.yays - aIndex.linkData.metadata.nays + 1;
+			const bUpvotes = bIndex.linkData.metadata.yays - bIndex.linkData.metadata.nays + 1;
 
 			if (aUpvotes < bUpvotes) {
 
@@ -74,9 +74,9 @@ export function sortDiscussions({sortBy, discussionsData, randomSeed, authors}) 
 
 		sortedDiscussions = discussionsData.sort(function(aIndex, bIndex){
 
-			if (new Date(aIndex.createDate) < new Date(bIndex.createDate)) {
+			if (new Date(aIndex.versionData.createDate) < new Date(bIndex.versionData.createDate)) {
 				return 1;
-			} else if (new Date(aIndex.createDate) > new Date(bIndex.createDate)) {
+			} else if (new Date(aIndex.versionData.createDate) > new Date(bIndex.versionData.createDate)) {
 				return -1;
 			}
 			return 0;
@@ -86,9 +86,9 @@ export function sortDiscussions({sortBy, discussionsData, randomSeed, authors}) 
 
 		sortedDiscussions = discussionsData.sort(function(aIndex, bIndex){
 
-			if (new Date(aIndex.createDate) > new Date(bIndex.createDate)) {
+			if (new Date(aIndex.versionData.createDate) > new Date(bIndex.versionData.createDate)) {
 				return 1;
-			} else if (new Date(aIndex.createDate) < new Date(bIndex.createDate)) {
+			} else if (new Date(aIndex.versionData.createDate) < new Date(bIndex.versionData.createDate)) {
 				return -1;
 			}
 			return 0;
@@ -97,7 +97,9 @@ export function sortDiscussions({sortBy, discussionsData, randomSeed, authors}) 
 
 	} else if (sortBy=='Filter - Replied By Author'){
 
-		sortedDiscussions = discussionsData.filter(this.authorReplied)
+		sortedDiscussions = discussionsData.filter((discussionItem)=>{
+			return authorReplied(discussionItem, authors);
+		});
 
 	} else if (sortBy=='Filter - Links'){
 
@@ -125,9 +127,10 @@ export function scoreDiscussions(discussionsData, randomSeed, authors) {
 export function authorReplied(discussionItem, authors) {
 
 	for (let i=0; i<discussionItem.children.length;i++){
-
+ 
 		const hasChildCommentByThisPubAuthor = (!!(authors.find( (author) => {
-			return (discussionItem.children[i].author.username === author.username);
+
+			return (discussionItem.children[i].authorsData[0].source.username === author);
 		})) );
 
 		if(hasChildCommentByThisPubAuthor){
@@ -138,7 +141,7 @@ export function authorReplied(discussionItem, authors) {
 
 export function includedLink(discussionItem) {
 
-	const hasLink = discussionItem.markdown.indexOf('http')
+	const hasLink = discussionItem.versionData.content.markdown.indexOf('http')
 
 	if(hasLink>0){
 		return true
@@ -169,7 +172,7 @@ export function getScore(discussionItem, randomSeed, authors) {
 
 
 	let upperScore = (p + 2*zzfn + z*Math.sqrt((zzfn / n + p*(1 - p))/n)) / (1 + 4*zzfn)
-	let lowerScore = lowerScore(yays, nays);
+	let lowerScore = wilsonScore(yays, nays);
 
 	if (didAuthorReply) {
 		lowerScore = lowerScore + (wilsonLowerScore(yays+3,nays)-lowerScore)
@@ -194,7 +197,8 @@ export function getScore(discussionItem, randomSeed, authors) {
 
 	const interval = (upperScore-lowerScore)/3
 
-  const random = randomSeed()*interval
+  // const random = randomSeed()*interval
+  const random = randomSeed*interval
 
   lowerScore=lowerScore+random
 

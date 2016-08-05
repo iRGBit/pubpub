@@ -148,8 +148,10 @@ export const Discussions = React.createClass({
 		const discussionsData = safeGetInToJS(this.props.atomData, ['discussionsData']) || [];
 		const loggedIn = this.props.loginData && this.props.loginData.get('loggedIn');
 		const loginQuery = this.props.pathname && this.props.pathname !== '/' ? '?redirect=' + this.props.pathname : ''; // Query appended to login route. Used to redirect to a given page after succesful login.
-		const sortBy = 'Best Discussions'; //add the dropdown menu???
-		const pubAuthors = 'joi_ito'; //
+		
+
+		const sortBy = 'Top Discussions'; // add the dropdown menu???
+		const pubAuthors = ['joi_ito']; //
 
 		let replyToData;
 		const tempArray = discussionsData.map((item)=> {
@@ -169,8 +171,9 @@ export const Discussions = React.createClass({
 		});
 		// debugger;
 		// topChildren[0].linkData.metadata.nays
-
-		const sortedDiscussions = sortDiscussions(sortBy, discussionsData, randomSeed, pubAuthors);
+		const randomSeed = 10;
+		const sortedDiscussions = sortDiscussions(sortBy, topChildren, randomSeed, pubAuthors);
+		console.log(sortedDiscussions);
 
 		return (
 			<div style={styles.container}>

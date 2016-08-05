@@ -290,7 +290,7 @@ export function getAtomData(req, res) {
 				return Link.find({'metadata.rootReply': rootID, type: 'reply'}).populate({
 					path: 'source',
 					model: 'Atom',
-				}).exec();
+				}).lean().exec();
 			})
 			.then(function(discussionLinks) {
 				const getDiscussionVersions = discussionLinks.map((discussionLink)=> {
@@ -324,6 +324,11 @@ export function getAtomData(req, res) {
 						return String(authorLink.destination) === String(discussion.source._id);
 					});
 					const linkData = discussion;
+					linkData.metadata.yays = linkData.metadata.yays.length;
+					linkData.metadata.nays = linkData.metadata.nays.length;
+					console.log('LINK DATAAA');
+					console.log(linkData.metadata);
+
 
 					return {atomData, versionData, authorsData, linkData};
 				});
