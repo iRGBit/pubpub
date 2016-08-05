@@ -2,16 +2,16 @@ import {wilsonScore} from 'decay';
 
 export function sortDiscussions(sortBy, discussionsData, randomSeed, authors) {
 
-  console.log(sortBy);
+	console.log(sortBy);
 
 	let sortedDiscussions;
 
-	if(sortBy=='Best Discussions') {
+	if (sortBy === 'Best Discussions') {
 
 		console.log('entered BEST');
 
 
-	const scoredDiscussions = scoreDiscussions(discussionsData, randomSeed, authors);
+		const scoredDiscussions = scoreDiscussions(discussionsData, randomSeed, authors);
 
 		sortedDiscussions = scoredDiscussions.sort(function(aIndex, bIndex) {
 
@@ -35,11 +35,11 @@ export function sortDiscussions(sortBy, discussionsData, randomSeed, authors) {
 			}
 			return 0;
 
-		}.bind(this));
+		});
 
-	} else if (sortBy=='Top Discussions') {
+	} else if (sortBy === 'Top Discussions') {
 
-		sortedDiscussions = discussionsData.sort(function(aIndex, bIndex){
+		sortedDiscussions = discussionsData.sort(function(aIndex, bIndex) {
 
 			const aUpvotes = aIndex.linkData.metadata.yays - aIndex.linkData.metadata.nays + 1;
 			const bUpvotes = bIndex.linkData.metadata.yays - bIndex.linkData.metadata.nays + 1;
@@ -55,9 +55,9 @@ export function sortDiscussions(sortBy, discussionsData, randomSeed, authors) {
 
 		}.bind(this));
 
-	} else if (sortBy=='Longest Discussions') {
+	} else if (sortBy === 'Longest Discussions') {
 
-		sortedDiscussions = discussionsData.sort(function(aIndex, bIndex){
+		sortedDiscussions = discussionsData.sort(function(aIndex, bIndex) {
 
 			const aReplies = aIndex.children.length
 			const bReplies = bIndex.children.length
@@ -70,9 +70,9 @@ export function sortDiscussions(sortBy, discussionsData, randomSeed, authors) {
 			return 0;
 
 		});
-	} else if (sortBy=='Newest Discussions'){
+	} else if (sortBy === 'Newest Discussions') {
 
-		sortedDiscussions = discussionsData.sort(function(aIndex, bIndex){
+		sortedDiscussions = discussionsData.sort(function(aIndex, bIndex) {
 
 			if (new Date(aIndex.versionData.createDate) < new Date(bIndex.versionData.createDate)) {
 				return 1;
@@ -82,9 +82,9 @@ export function sortDiscussions(sortBy, discussionsData, randomSeed, authors) {
 			return 0;
 
 		});
-	} else if (sortBy=='Oldest Discussions'){
+	} else if (sortBy === 'Oldest Discussions') {
 
-		sortedDiscussions = discussionsData.sort(function(aIndex, bIndex){
+		sortedDiscussions = discussionsData.sort(function(aIndex, bIndex) {
 
 			if (new Date(aIndex.versionData.createDate) > new Date(bIndex.versionData.createDate)) {
 				return 1;
@@ -95,17 +95,17 @@ export function sortDiscussions(sortBy, discussionsData, randomSeed, authors) {
 
 		});
 
-	} else if (sortBy=='Filter - Replied By Author'){
+	} else if (sortBy === 'Filter - Replied By Author') {
 
 		sortedDiscussions = discussionsData.filter((discussionItem)=>{
 			return authorReplied(discussionItem, authors);
 		});
 
-	} else if (sortBy=='Filter - Links'){
+	} else if (sortBy === 'Filter - Links') {
 
 		sortedDiscussions = discussionsData.filter(this.includedLink)
 
-	} else if (sortBy=='Filter - Replied'){
+	} else if (sortBy === 'Filter - Replied') {
 
 		console.log('it entered the else statement for filter for replied discussions');
 
@@ -119,22 +119,22 @@ export function sortDiscussions(sortBy, discussionsData, randomSeed, authors) {
 export function scoreDiscussions(discussionsData, randomSeed, authors) {
 
 	for(let i = 0; i < discussionsData.length; i++) {
-		discussionsData[i].score=getScore(discussionsData[i],randomSeed, authors);
+		discussionsData[i].score = getScore(discussionsData[i], randomSeed, authors);
 	}
 	return discussionsData;
 }
 
 export function authorReplied(discussionItem, authors) {
 
-	for (let i=0; i<discussionItem.children.length;i++){
+	for (let i = 0; i < discussionItem.children.length; i++) {
  
 		const hasChildCommentByThisPubAuthor = (!!(authors.find( (author) => {
 
 			return (discussionItem.children[i].authorsData[0].source.username === author);
 		})) );
 
-		if(hasChildCommentByThisPubAuthor){
-			return hasChildCommentByThisPubAuthor
+		if (hasChildCommentByThisPubAuthor) {
+			return hasChildCommentByThisPubAuthor;
 		}
 	}
 }
@@ -143,13 +143,13 @@ export function includedLink(discussionItem) {
 
 	const hasLink = discussionItem.versionData.content.markdown.indexOf('http')
 
-	if(hasLink>0){
-		return true
+	if (hasLink > 0) {
+		return true;
 	}
 }
 
-export function replies(discussionItem){
-	return discussionItem.children.length
+export function replies(discussionItem) {
+	return discussionItem.children.length;
 }
 
 // topChildren[0].linkData.metadata.nays
@@ -159,7 +159,7 @@ export function getScore(discussionItem, randomSeed, authors) {
 	const didAuthorReply = authorReplied(discussionItem, authors);
 	const didIncludeLink = includedLink(discussionItem);
 	const amountReplies = replies(discussionItem);
-	const wilsonLowerScore = wilsonScore();
+	const wilsonLowerScore = wilsonScore;
 	const yays = (discussionItem.linkData.metadata.yays) ? discussionItem.linkData.metadata.yays : 0;
 	const nays = (discussionItem.linkData.metadata.nays) ? discussionItem.linkData.metadata.nays : 0;
 
@@ -172,27 +172,27 @@ export function getScore(discussionItem, randomSeed, authors) {
 
 
 	let upperScore = (p + 2*zzfn + z*Math.sqrt((zzfn / n + p*(1 - p))/n)) / (1 + 4*zzfn)
-	let lowerScore = wilsonScore(yays, nays);
+	let lowerScore = wilsonLowerScore(yays, nays);
 
 	if (didAuthorReply) {
-		lowerScore = lowerScore + (wilsonLowerScore(yays+3,nays)-lowerScore)
+		lowerScore = lowerScore + (wilsonLowerScore(yays + 3, nays) - lowerScore);
 	}
 
-	if (didIncludeLink){
-		lowerScore = lowerScore + (wilsonLowerScore(yays+1,nays)-lowerScore)
+	if (didIncludeLink) {
+		lowerScore = lowerScore + (wilsonLowerScore(yays + 1, nays) - lowerScore);
 	}
 
-	if (amountReplies>0){
+	if (amountReplies>0) {
 
 		const normalReplies = 2*Math.log(replies)
 
-		lowerScore = lowerScore + (wilsonLowerScore(yays+normalReplies,nays)-lowerScore)
+		lowerScore = lowerScore + (wilsonLowerScore(yays + normalReplies, nays) - lowerScore);
 
 	}
 
-	if (upperScore>1){
+	if (upperScore > 1) {
 
-		upperScore=1
+		upperScore = 1;
 	}
 
 	const interval = (upperScore-lowerScore)/3

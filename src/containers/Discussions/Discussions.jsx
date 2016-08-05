@@ -150,7 +150,7 @@ export const Discussions = React.createClass({
 		const loginQuery = this.props.pathname && this.props.pathname !== '/' ? '?redirect=' + this.props.pathname : ''; // Query appended to login route. Used to redirect to a given page after succesful login.
 		
 
-		const sortBy = 'Top Discussions'; // add the dropdown menu???
+		const sortBy = 'Best Discussions'; // add the dropdown menu???
 		const pubAuthors = ['joi_ito']; //
 
 		let replyToData;
@@ -171,7 +171,7 @@ export const Discussions = React.createClass({
 		});
 		// debugger;
 		// topChildren[0].linkData.metadata.nays
-		const randomSeed = 10;
+		const randomSeed = 4;
 		const sortedDiscussions = sortDiscussions(sortBy, topChildren, randomSeed, pubAuthors);
 		console.log(sortedDiscussions);
 
