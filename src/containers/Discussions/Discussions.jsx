@@ -16,6 +16,7 @@ import {StoppableSubscription} from 'subscription';
 // import {createAtom} from 'containers/Media/actions';
 import {createReplyDocument} from './actions';
 import DiscussionItem from './DiscussionItem';
+import {sortDiscussions} from './sorting'
 
 // import {globalMessages} from 'utils/globalMessages';
 // import {FormattedMessage} from 'react-intl';
@@ -67,7 +68,7 @@ export const Discussions = React.createClass({
 	componentDidMount() {
 		const prosemirror = require('prosemirror');
 		const {pubpubSetup} = require('components/AtomTypes/Document/proseEditor/pubpubSetup');
-		
+
 		const place = document.getElementById('reply-input');
 		if (!place) { return undefined; }
 		pm = new prosemirror.ProseMirror({
@@ -82,8 +83,8 @@ export const Discussions = React.createClass({
 
 		pm.on.doubleClickOn.add((pos, node, nodePos)=>{
 			if (node.type.name === 'embed') {
-				const done = (attrs)=> { 
-					pm.tr.setNodeType(nodePos, node.type, attrs).apply(); 
+				const done = (attrs)=> {
+					pm.tr.setNodeType(nodePos, node.type, attrs).apply();
 				};
 				window.toggleMedia(pm, done, node);
 				return true;
@@ -133,10 +134,10 @@ export const Discussions = React.createClass({
 
 		const atomType = 'document';
 		const versionContent = {
-			docJSON: pm.doc.toJSON(),	
+			docJSON: pm.doc.toJSON(),
 			markdown: markdownSerializer.serialize(pm.doc),
 		};
-		
+
 		this.props.dispatch(createReplyDocument(atomType, versionContent, 'Reply', this.state.replyToID, this.state.rootReply));
 		pm.setDoc(markdownParser.parse(''));
 	},
@@ -147,6 +148,8 @@ export const Discussions = React.createClass({
 		const discussionsData = safeGetInToJS(this.props.atomData, ['discussionsData']) || [];
 		const loggedIn = this.props.loginData && this.props.loginData.get('loggedIn');
 		const loginQuery = this.props.pathname && this.props.pathname !== '/' ? '?redirect=' + this.props.pathname : ''; // Query appended to login route. Used to redirect to a given page after succesful login.
+		const sortBy = 'Best Discussions'; //add the dropdown menu???
+		const pubAuthors = 'joi_ito'; //
 
 		let replyToData;
 		const tempArray = discussionsData.map((item)=> {
@@ -162,8 +165,12 @@ export const Discussions = React.createClass({
 			return index;
 		});
 		const topChildren = tempArray.filter((index)=> {
-			return index.linkData.destination === atomData._id;	
+			return index.linkData.destination === atomData._id;
 		});
+		// debugger;
+		// topChildren[0].linkData.metadata.nays
+
+		const sortedDiscussions = sortDiscussions(sortBy, discussionsData, randomSeed, pubAuthors);
 
 		return (
 			<div style={styles.container}>
@@ -172,14 +179,14 @@ export const Discussions = React.createClass({
 					'.pub-discussions-wrapper .p-block': {
 						padding: '0.5em 0em',
 					}
-				}} />				
+				}} />
 
-				{loggedIn && 
+				{loggedIn &&
 					<div>
-				
+
 						<Media/>
 
-						<Sticky style={styles.replyWrapper} isActive={!!replyToData}>	
+						<Sticky style={styles.replyWrapper} isActive={!!replyToData}>
 							<div style={[styles.replyHeader, !replyToData && {display: 'none'}]}>
 									<div className={'showChildOnHover'} style={styles.replyToWrapper}>
 										Reply to: {replyToData && replyToData.authorsData[0].source.name}
@@ -205,18 +212,18 @@ export const Discussions = React.createClass({
 							</div>
 						</Sticky>
 
-						
+
 					</div>
 				}
 
 				{!loggedIn &&
-					<Sticky style={styles.replyWrapper} isActive={!!replyToData}>	
+					<Sticky style={styles.replyWrapper} isActive={!!replyToData}>
 						<Link to={'/login' + loginQuery} style={globalStyles.link}>
 							<div style={styles.loginMessage}>Login to post discussion</div>
 						</Link>
 					</Sticky>
 				}
-				
+
 
 				<div>
 					{topChildren.map((discussion, index)=> {
