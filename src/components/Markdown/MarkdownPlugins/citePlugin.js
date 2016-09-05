@@ -1,7 +1,8 @@
 import React, {PropTypes} from 'react';
-import ErrorMsg from './ErrorPlugin';
 import {Reference} from 'components';
+
 import createPubPubPlugin from './PubPub';
+import ErrorMsg from './ErrorPlugin';
 
 let styles = {};
 
@@ -82,6 +83,19 @@ const Plugin = React.createClass({
 		const count = (this.props.count) ? this.props.count : 0;
 		if (this.props.error === 'empty') {
 			return <span></span>;
+		}
+
+		if (this.props.mode === 'rss') {
+			return (
+				<span>
+					{this.props.error === 'type'
+						? <span>Could not find reference.</span>
+					: <span>
+							[{count}]
+						</span>
+					}
+				</span>
+			);
 		}
 		return (
 			<span>

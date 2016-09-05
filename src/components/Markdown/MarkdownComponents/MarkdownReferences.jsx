@@ -12,6 +12,26 @@ const References = React.createClass({
     if (!references || references.length === 0) {
       return (<span></span>);
     }
+
+    if (this.props.mode === 'rss') {
+      return (<div id={'pub-references'}>
+            <h1>References</h1>
+            {
+              references.map((reference, index)=>{
+                return (
+                  <p key={'pubReference-' + index} className={'reference'}>
+                    <span className={'reference-number'}>[{index + 1}]</span>
+                    <span className={'reference-content'}>
+                      <Reference citationObject={reference} mode={'mla'} />
+                    </span>
+                  </p>
+                );
+              })
+            }
+          </div>);
+		}
+
+
     return (<div id={'pub-references'}>
           <h1>References</h1>
           {
