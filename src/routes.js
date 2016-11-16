@@ -1,7 +1,8 @@
-import React from 'react';
-import {IndexRoute, Route} from 'react-router';
-import {App, Atom, EmailVerification, IframePub, JournalCreate, JournalProfile, Landing, Login, Manage, ResetPassword, SignUp, UserProfile} from 'containers';
 import {About, AboutJournals, AboutPubs, AboutReviews, NotFound} from 'components';
+import {App, Atom, DiffView, EmailVerification, IframePub, JournalCreate, JournalProfile, Landing, Login, Manage, ResetPassword, SignUp, UserProfile} from 'containers';
+import {IndexRoute, Route} from 'react-router';
+
+import React from 'react';
 
 function loadComponent(component) {
 	if (__CLIENT__ && !__DEVELOPMENT__) return (location, cb) => component(module => cb(null, module.default || module));
@@ -52,10 +53,16 @@ export default () => {
 
 			<Route path="/signup" getComponent={loadComponent(SignUp)}/>
 
+			<Route path="/test/diff" getComponent={loadComponent(DiffView)}/>
+
+
+
 			<Route path="/verify/:hash" getComponent={loadComponent(EmailVerification)}/>
 
 			<Route path="/:slug" getComponent={loadComponent(JournalProfile)}/> {/* /jods or /jods?collection=fall2015 */}
 			<Route path="/:slug/:mode" getComponent={loadComponent(JournalProfile)}/> {/* /jods/about or /jods/settings */}
+
+
 
 			{ /* Catch all route */ }
 			<Route path="*" component={NotFound} status={404} />

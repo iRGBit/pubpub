@@ -1,26 +1,51 @@
-import {migrateDiffs, migrateMarks, schema as pubSchema} from './proseEditor/schema';
+import {migrateDiffs, migrateMarks, schema as pubSchema} from './schema';
 
-import ElementSchema from './proseEditor/elementSchema';
+import ElementSchema from './elementSchema';
+import {Plugin} from 'prosemirror-state';
 
 class RichEditor {
 
-  constructor({place, contents}) {
-    const plugins = [pubpubSetup({schema: pubSchema})];
-    this.create({place, contents, plugins});
+  constructor({place, text, contents}) {
+    const {pubpubSetup} = require('./pubpubSetup');
+    const {markdownParser} = require("./markdownParser");
+
+    const {DecorationSet} = require("prosemirror-view");
+
+    /*
+    const highlightPlugin = new Plugin({
+      state: {
+        init() { console.log('initiating plugins!'); return {deco: DecorationSet.empty, commit: null}; },
+      },
+      props: {
+        decorations(state) { console.log('making decorations!');return this.getState(state).deco }
+      }
+    });
+    */
+
+    const plugins = pubpubSetup({schema: pubSchema});
+    let docJSON;
+    if (text) {
+      docJSON = markdownParser.parse(text).toJSON();
+    } else {
+      docJSON = contents;
+    }
+    this.create({place, contents: docJSON, plugins});
   }
 
   create({place, contents, plugins}) {
-    const {pubpubSetup, buildMenuItems} = require('./proseEditor/pubpubSetup');
+    const {buildMenuItems} = require('./pubpubSetup');
     const {EditorState} = require('prosemirror-state');
     const {MenuBarEditorView, MenuItem} = require('prosemirror-menu');
     const collabEditing = require('prosemirror-collab').collab;
-    const {clipboardParser, clipboardSerializer} = require('./proseEditor/clipboardSerializer');
+    const {clipboardParser, clipboardSerializer} = require('./clipboardSerializer');
+
+    console.log('constructing menu!');
 
 
     const menu = buildMenuItems(pubSchema);
     // TO-DO: USE UNIQUE ID FOR USER AND VERSION NUMBER
 
-    migrateMarks(contents);
+    // migrateMarks(contents);
 
     ElementSchema.initiateProseMirror({
     	changeNode: this.changeNode,
@@ -92,6 +117,12 @@ class RichEditor {
     }
   }
 
+  _createDecorations = (editorState) => {
+    const {DecorationSet} = require("prosemirror-view");
+    console.log('Creating decorations!');
+    return DecorationSet.empty;
+  }
+
 	changeNode = (currentFrom, nodeType, nodeAttrs) => {
 		const state = this.pm;
 		const transform = state.tr.setNodeType(currentFrom, nodeType, nodeAttrs);
@@ -109,7 +140,7 @@ class RichEditor {
 	}
 
   toJSON = () => {
-    return this.view.state.doc.toJSON();
+    return this.view.editor.state.doc.toJSON();
   }
 
   toMarkdown = () => {
@@ -129,10 +160,13 @@ class RichEditor {
 }
 
 
+
+
 class CollaborativeRichEditor extends RichEditor {
 
   constructor({place, contents, collaborative: {userId, versionNumber, lastDiffs, collab}}) {
 
+    super();
     const plugins = [pubpubSetup({schema: pubSchema})];
     this.create({place, contents, plugins});
     migrateDiffs(lastDiffs);
@@ -165,4 +199,5 @@ class CollaborativeRichEditor extends RichEditor {
 }
 
 exports.RichEditor = RichEditor;
+// exports.DiffEditor = DiffEditor;
 exports.CollaborativeRichEditor = CollaborativeRichEditor;

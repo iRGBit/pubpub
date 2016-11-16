@@ -13,3 +13,4 @@ export ManageSingle from './Manage/ManageSingle';
 export ResetPassword from './ResetPassword/ResetPassword';
 export SignUp from './SignUp/SignUp';
 export UserProfile from './UserProfile/UserProfile';
+export DiffView from './DiffView/DiffView';
