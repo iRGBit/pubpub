@@ -1,10 +1,10 @@
+import {DiffRichEditor, RichEditor} from 'components/AtomTypes/Document/proseEditor/richEditor';
 import React, { PropTypes } from 'react';
 import {follow, unfollow} from './actions';
 
 import {FormattedMessage} from 'react-intl';
 import { Link } from 'react-router';
 import Radium from 'radium';
-import {RichEditor} from 'components/AtomTypes/Document/proseEditor/richEditor';
 import {connect} from 'react-redux';
 import {globalMessages} from 'utils/globalMessages';
 
@@ -32,12 +32,11 @@ export const DiffView = React.createClass({
 
 		const place1 = document.getElementById('richeditor1');
 		const place2 = document.getElementById('richeditor2');
-		console.log(place1);
 
-		this.editor1 = new RichEditor({place: place1, text: "# what \n heyyyyyyy55 \n ### hi \n # ho"});
-		// this.editor2 = new RichEditor({place: place2, text: "# what \n heyyyyyyy \n ## hi \n # hi"});
+		this.editor1 = new RichEditor({place: place1, text: "# what \n heyyyyyyy \n ## a \n# what \n ## hi \n # ho"});
+		this.editor2 = new DiffRichEditor({place: place2, text: "# what \n heyyyyyyy \n# what \n ## hi \n # hi", otherEditor: this.editor1});
 
-		// window.setTimeout(this.compareDiffs, 5000);
+		window.setTimeout(this.compareDiffs, 5000);
 
 	},
 
@@ -45,9 +44,6 @@ export const DiffView = React.createClass({
 		const a = this.editor1.toJSON();
 		const b = this.editor2.toJSON();
 
-		this.editor1.view.update({decorations: function() {console.log('TRYIGN THIS'); return null;}});
-
-		console.log(b);
 
 		var delta = jsondiffpatch.diff(a, b);
 		console.log('json diff:' , delta);

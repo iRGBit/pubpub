@@ -1076,3 +1076,12 @@ svg.icon {
 svg.icon:hover {
 	color: #BBBDC0;
 }
+
+
+
+/*
+TESTING CSS
+*/
+.blame-marker{
+	background-color: rgba(255,50,50,0.1);
+}
