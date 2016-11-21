@@ -86,9 +86,6 @@ const highlightPlugin = new Plugin({
       if (state && this.getState(state)) {
         return this.getState(state).deco;
       }
-      console.log('RETURNING NULL');
-      console.log(this.getState(state));
-      console.log(state);
       return null;
 
     }
@@ -131,7 +128,6 @@ class TrackState {
   applyTransform(transform) {
     let inverted = transform.steps.map((step, i) => step.invert(transform.docs[i]))
     const newBlameMap = updateBlameMap(this.blameMap, transform, this.commits.length);
-    console.log('Updated blame map!', newBlameMap);
     return new TrackState(newBlameMap,
                           this.commits,
                           this.uncommittedSteps.concat(inverted),
@@ -325,7 +321,6 @@ class ReviewEditor extends AbstractEditor {
 
   highlightCommit = (commitId) => {
     const commitAction = {type: "highlightCommit", commit: commitId};
-    console.log('highlight', commitAction);
     this._onAction(commitAction);
   }
 
@@ -336,16 +331,12 @@ class ReviewEditor extends AbstractEditor {
 
   _onAction(action) {
     super._onAction(action);
-    setTimeout( () => {
-          const state = this.view.editor.state;
-          let curState = this.trackPlugin.getState(state);
-          const commits = curState.commits.slice(0);
-          const unsavedId = curState.commits.length;
-          commits.push(new UnsavedCommit(unsavedId));
-        this.renderCommits(commits);
-    }, 500);
-
-    // renderCommits(state, onAction)
+    const state = this.view.editor.state;
+    let curState = this.trackPlugin.getState(state);
+    const commits = curState.commits.slice(0);
+    const unsavedId = curState.commits.length;
+    commits.push(new UnsavedCommit(unsavedId));
+    this.renderCommits(commits);
   }
 
 

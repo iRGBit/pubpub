@@ -84,11 +84,34 @@ export const DiffView = React.createClass({
 		this.editor1.clearHighlight(commitId);
 	},
 
+	onHighlightHover(evt) {
+		const hoverClass = evt.target.className;
+		if (hoverClass.indexOf('commit-id') !== -1) {
+			if (hoverClass.indexOf('editing') !== -1) {
+				this.setState({highlightCommit: 'editing'});
+				return;
+			}
+			const commitRegex = /commit-id-(\d)*/;
+			const match = commitRegex.exec(hoverClass);
+			if (match && match[1]) {
+				const commit = parseInt(match[1]);
+				this.setState({highlightCommit: commit});
+			}
+		} else if (this.state.highlightCommit) {
+				this.setState({highlightCommit: null});
+		}
+	},
+
+	clearHighlightHover() {
+		this.setState({highlightCommit: null});
+	},
+
 
 	render: function() {
+		const {highlightCommit} = this.state;
 		return (
 			<div>
-			  <div ref="commitdiv" style={styles.commitDiv(this.state.editorTop)}>
+			  <div ref="commitdiv" style={styles.commitDiv(this.state.editorTop, (highlightCommit === 'editing'))}>
 					<div>
 						Enter a message:
 						<input ref="commitmsg" type="text"></input>
@@ -103,15 +126,16 @@ export const DiffView = React.createClass({
 								<div
 									onMouseOver={this.hoverCommit.bind(this, commit.id)}
 									onMouseOut={this.unhoverCommt.bind(this, commit.id)}
-									style={styles.commitMsg(commit.top)}>
-									#{index} - {commit.message}
+									style={styles.commitMsg(commit.top, (commit.id === highlightCommit))}>
+										#{index} - {commit.message}
+										<button>Revert</button>
 							</div>);
 					} else {
 						return null;
 					}
 
 				})}
-				<div id="richeditor1" styles={styles.reviewEditor}>
+				<div id="richeditor1" styles={styles.reviewEditor} onMouseOver={this.onHighlightHover} onMouseOut={this.clearHighlightHover}>
 				</div>
 			</div>
 		);
@@ -132,7 +156,7 @@ styles = {
 		width: '650px',
 		marginLeft: '50px',
 	},
-	commitMsg: function(commitTop) {
+	commitMsg: function(commitTop, highlighted) {
 		return {
 			position: 'absolute',
 			top: commitTop,
@@ -142,9 +166,10 @@ styles = {
 			border: '1px solid black',
 			display: 'block',
 			cursor: 'pointer',
+			backgroundColor: (highlighted) ? 'rgba(200,200,50,0.4)' : null,
 		};
 	},
-	commitDiv: function(editorTop) {
+	commitDiv: function(editorTop, highlighted) {
 		if (!editorTop) {
 			return {
 				display: 'none',
@@ -155,6 +180,7 @@ styles = {
 			top: editorTop,
 			left: '700px',
 			zIndex: 100,
+			backgroundColor: (highlighted) ? 'rgba(200,200,50,0.4)' : null,
 		};
 	},
 	followButton: {
