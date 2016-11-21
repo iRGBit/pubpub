@@ -1,15 +1,20 @@
-import {DiffRichEditor, RichEditor} from 'components/AtomTypes/Document/proseEditor/richEditor';
 import React, { PropTypes } from 'react';
-import {follow, unfollow} from './actions';
 
 import {FormattedMessage} from 'react-intl';
-import { Link } from 'react-router';
 import Radium from 'radium';
+import {RichEditor} from 'components/AtomTypes/Document/proseEditor';
 import {connect} from 'react-redux';
-import {globalMessages} from 'utils/globalMessages';
 
 // import {globalStyles} from 'utils/styleConstants';
-var jsondiffpatch = require('jsondiffpatch').create({textDiff: {minLength: 3}});
+var jsondiffpatch = require('jsondiffpatch').create(
+	{
+		textDiff: {minLength: 3},
+		arrays: {
+			detectMove: true,
+			includeValueOnMove: true
+		},
+	}
+);
 var diffchangeset = require('changeset');
 var {diff} = require('json-diff');
 
@@ -30,10 +35,13 @@ export const DiffView = React.createClass({
 
 	componentDidMount() {
 
+		const {DiffRichEditor} = require('components/AtomTypes/Document/proseEditor/editors/diffEditor');
+
+
 		const place1 = document.getElementById('richeditor1');
 		const place2 = document.getElementById('richeditor2');
 
-		this.editor1 = new RichEditor({place: place1, text: "# what \n heyyyyyyy \n ## a \n# what \n ## hi \n # ho"});
+		this.editor1 = new RichEditor({place: place1, text: "# what \n heyyyyyyy \n ## a \n# what \n ## hi \n # hi"});
 		this.editor2 = new DiffRichEditor({place: place2, text: "# what \n heyyyyyyy \n# what \n ## hi \n # hi", otherEditor: this.editor1});
 
 		window.setTimeout(this.compareDiffs, 5000);
@@ -43,6 +51,9 @@ export const DiffView = React.createClass({
 	compareDiffs() {
 		const a = this.editor1.toJSON();
 		const b = this.editor2.toJSON();
+
+		console.log(JSON.stringify(a));
+		console.log(JSON.stringify(b));
 
 
 		var delta = jsondiffpatch.diff(a, b);

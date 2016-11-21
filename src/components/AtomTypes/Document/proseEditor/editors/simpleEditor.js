@@ -1,7 +1,7 @@
-import {schema as pubSchema} from './schema';
+import {schema as pubSchema} from '../schema';
 
 exports.createSimpleEditor = (place, doc) => {
-  const {pubpubSetup} = require('./pubpubSetup');
+  const {pubpubSetup} = require('../pubpubSetup');
   const {EditorState} = require('prosemirror-state');
   const {EditorView} = require('prosemirror-view');
   const {defaultMarkdownParser, defaultMarkdownSerializer} = require("prosemirror-markdown");

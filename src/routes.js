@@ -1,5 +1,5 @@
 import {About, AboutJournals, AboutPubs, AboutReviews, NotFound} from 'components';
-import {App, Atom, DiffView, EmailVerification, IframePub, JournalCreate, JournalProfile, Landing, Login, Manage, ResetPassword, SignUp, UserProfile} from 'containers';
+import {App, Atom, DiffView, EmailVerification, IframePub, JournalCreate, JournalProfile, Landing, Login, Manage, ResetPassword, ReviewView, SignUp, UserProfile} from 'containers';
 import {IndexRoute, Route} from 'react-router';
 
 import React from 'react';
@@ -54,7 +54,7 @@ export default () => {
 			<Route path="/signup" getComponent={loadComponent(SignUp)}/>
 
 			<Route path="/test/diff" getComponent={loadComponent(DiffView)}/>
-
+			<Route path="/test/review" getComponent={loadComponent(ReviewView)}/>
 
 
 			<Route path="/verify/:hash" getComponent={loadComponent(EmailVerification)}/>
