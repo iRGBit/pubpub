@@ -10,7 +10,7 @@ const trackPlugin = new Plugin({
     init(_, instance) {
       return new TrackState([new Span(0, instance.doc.content.size, null)], [], [], [])
     },
-    applyAction(action, tracked) {
+    applyAction(action, tracked, previousState, newState) {
       if (action.type == "transform")
         return tracked.applyTransform(action.transform)
       if (action.type == "commit")
@@ -27,8 +27,7 @@ const trackPlugin = new Plugin({
 const highlightPlugin = new Plugin({
   state: {
     init() { return {deco: DecorationSet.empty, commit: null} },
-    applyAction(action, prev, state) {
-
+    applyAction(action, val, prev, state) {
 
       if (action.type == "highlightCommit") {
         let tState = trackPlugin.getState(state)
@@ -44,6 +43,7 @@ const highlightPlugin = new Plugin({
       else if (action.type === 'commit' || action.type === 'transform' || action.type === 'clearHighlight') {
         let tState = trackPlugin.getState(state)
         const editingCommit = tState.commits.length;
+        console.log('blame map', tState.blameMap);
         let decos = tState.blameMap
             .filter(span => span.commit !== null)
             .map(span => {
@@ -51,11 +51,11 @@ const highlightPlugin = new Plugin({
               if (span.commit === editingCommit) {
                 decorationClass += ' editing';
               }
-              return Decoration.inline(span.from, span.to, {class: decorationClass})
+              return Decoration.inline(span.from, span.to, {class: decorationClass}, {inclusiveLeft: true, inclusiveRight: true});
             })
-        return {deco: DecorationSet.create(state.doc, decos), commit: action.commit}
+        return {deco: DecorationSet.create(state.doc, decos), commit: action.commit};
       }
-      return prev;
+      return val;
 
       /*
       if (action.type == "highlightCommit" && prev.commit != action.commit) {
@@ -123,7 +123,9 @@ class TrackState {
 
   applyTransform(transform) {
     let inverted = transform.steps.map((step, i) => step.invert(transform.docs[i]))
-    return new TrackState(updateBlameMap(this.blameMap, transform, this.commits.length),
+    const newBlameMap = updateBlameMap(this.blameMap, transform, this.commits.length);
+    console.log('Updated blame map!', newBlameMap);
+    return new TrackState(newBlameMap,
                           this.commits,
                           this.uncommittedSteps.concat(inverted),
                           this.uncommittedMaps.concat(transform.mapping.maps))
