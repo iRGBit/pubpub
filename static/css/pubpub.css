@@ -1091,5 +1091,9 @@ TESTING CSS
 }
 
 .blame-marker.highlight{
-	background-color: rgba(255,255,50,0.5) !important;
+	background-color: rgba(255,255,50,0.5);
+}
+
+.blame-marker.invisible{
+	background-color: transparent;
 }

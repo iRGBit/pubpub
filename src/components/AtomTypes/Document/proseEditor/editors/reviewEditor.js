@@ -32,8 +32,16 @@ const highlightPlugin = new Plugin({
       if (action.type == "highlightCommit") {
         let tState = trackPlugin.getState(state)
         let decos = tState.blameMap
-            .filter(span => span.commit === action.commit)
-            .map(span => Decoration.inline(span.from, span.to, {class: `blame-marker commit-id-${span.commit} highlight`}))
+            .filter(span => span.commit !== null)
+            .map(span => {
+              let decorationClass = `blame-marker commit-id-${span.commit}`;
+              if (span.commit !== action.commit) {
+                decorationClass += ' invisible';
+              } else {
+                decorationClass += ' highlight';
+              }
+              return Decoration.inline(span.from, span.to, {class: decorationClass}, {inclusiveLeft: true, inclusiveRight: true});
+            })
         return {deco: DecorationSet.create(state.doc, decos), commit: action.commit}
       }
       else if (action.type == "transform" && prev.commit) {
@@ -43,7 +51,6 @@ const highlightPlugin = new Plugin({
       else if (action.type === 'commit' || action.type === 'transform' || action.type === 'clearHighlight') {
         let tState = trackPlugin.getState(state)
         const editingCommit = tState.commits.length;
-        console.log('blame map', tState.blameMap);
         let decos = tState.blameMap
             .filter(span => span.commit !== null)
             .map(span => {
