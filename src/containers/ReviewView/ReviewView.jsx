@@ -40,11 +40,14 @@ export const DiffView = React.createClass({
 	},
 
 	componentDidUpdate() {
-		console.log('Commits', this.state.commits);
 		let changedCommits = false;
 		for (const commit of this.state.commits) {
 					const querySelector = '.commit-id-' + commit.id;
 					const queryElem = document.querySelector(querySelector);
+					if (!queryElem) {
+						commit.top = null;
+						continue;
+					}
 					const top = queryElem.offsetTop;
 					if (commit.unsaved) {
 						if (this.state.editorTop !== top) {
@@ -65,14 +68,20 @@ export const DiffView = React.createClass({
 	},
 
 	renderCommits(commits) {
-		console.log('rendering commits', commits);
 		this.setState({commits});
 	},
 
 	submitMsg() {
 		const msg = this.refs.commitmsg.value;
-		console.log('submit msg!', msg);
 		this.editor1.createCommit(msg);
+	},
+
+	hoverCommit(commitId) {
+		this.editor1.highlightCommit(commitId);
+	},
+
+	unhoverCommt(commitId) {
+		this.editor1.clearHighlight(commitId);
 	},
 
 
@@ -90,7 +99,13 @@ export const DiffView = React.createClass({
 			  </div>
 				{this.state.commits.map((commit, index) => {
 					if (commit.top) {
-							return (<div style={styles.commitMsg(commit.top)}>#{index} - {commit.message}</div>);
+							return (
+								<div
+									onMouseOver={this.hoverCommit.bind(this, commit.id)}
+									onMouseOut={this.unhoverCommt.bind(this, commit.id)}
+									style={styles.commitMsg(commit.top)}>
+									#{index} - {commit.message}
+							</div>);
 					} else {
 						return null;
 					}
@@ -114,7 +129,8 @@ export default connect( state => {
 
 styles = {
 	reviewEditor: {
-		width: '650px'
+		width: '650px',
+		marginLeft: '50px',
 	},
 	commitMsg: function(commitTop) {
 		return {
@@ -122,6 +138,10 @@ styles = {
 			top: commitTop,
 			left: '700px',
 			zIndex: 100,
+			minHeight: 50,
+			border: '1px solid black',
+			display: 'block',
+			cursor: 'pointer',
 		};
 	},
 	commitDiv: function(editorTop) {

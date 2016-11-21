@@ -29,15 +29,33 @@ const highlightPlugin = new Plugin({
     init() { return {deco: DecorationSet.empty, commit: null} },
     applyAction(action, prev, state) {
 
-      if (action.type === 'commit' || action.type === 'transform') {
+
+      if (action.type == "highlightCommit") {
         let tState = trackPlugin.getState(state)
-        console.log(tState.blameMap);
-        console.log(tState.uncommittedSteps);
         let decos = tState.blameMap
-            .filter(span => span.commit !== null)
-            .map(span => Decoration.inline(span.from, span.to, {class: `blame-marker commit-id-${span.commit}`}))
+            .filter(span => span.commit === action.commit)
+            .map(span => Decoration.inline(span.from, span.to, {class: `blame-marker commit-id-${span.commit} highlight`}))
         return {deco: DecorationSet.create(state.doc, decos), commit: action.commit}
       }
+      else if (action.type == "transform" && prev.commit) {
+        console.log('got previous committt');
+        return {deco: prev.deco.map(action.transform.mapping, action.transform.doc), commit: prev.commit}
+      }
+      else if (action.type === 'commit' || action.type === 'transform' || action.type === 'clearHighlight') {
+        let tState = trackPlugin.getState(state)
+        const editingCommit = tState.commits.length;
+        let decos = tState.blameMap
+            .filter(span => span.commit !== null)
+            .map(span => {
+              let decorationClass = `blame-marker commit-id-${span.commit}`;
+              if (span.commit === editingCommit) {
+                decorationClass += ' editing';
+              }
+              return Decoration.inline(span.from, span.to, {class: decorationClass})
+            })
+        return {deco: DecorationSet.create(state.doc, decos), commit: action.commit}
+      }
+      return prev;
 
       /*
       if (action.type == "highlightCommit" && prev.commit != action.commit) {
@@ -61,6 +79,9 @@ const highlightPlugin = new Plugin({
       if (state && this.getState(state)) {
         return this.getState(state).deco;
       }
+      console.log('RETURNING NULL');
+      console.log(this.getState(state));
+      console.log(state);
       return null;
 
     }
@@ -290,6 +311,17 @@ class ReviewEditor extends AbstractEditor {
 
   createCommit = (msg) => {
     const commitAction = {type: "commit", message: msg, time: new Date};
+    this._onAction(commitAction);
+  }
+
+  highlightCommit = (commitId) => {
+    const commitAction = {type: "highlightCommit", commit: commitId};
+    console.log('highlight', commitAction);
+    this._onAction(commitAction);
+  }
+
+  clearHighlight = (commitId) => {
+    const commitAction = {type: "clearHighlight", commit: commitId};
     this._onAction(commitAction);
   }
 

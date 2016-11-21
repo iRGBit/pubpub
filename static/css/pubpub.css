@@ -1085,3 +1085,11 @@ TESTING CSS
 .blame-marker{
 	background-color: rgba(255,50,50,0.1);
 }
+
+.blame-marker.editing{
+	background-color: rgba(50,255,50,0.1);
+}
+
+.blame-marker.highlight{
+	background-color: rgba(255,255,50,0.5) !important;
+}
