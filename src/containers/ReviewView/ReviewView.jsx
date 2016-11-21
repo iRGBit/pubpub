@@ -19,6 +19,7 @@ export const DiffView = React.createClass({
 			isFollowing: false,
 			commits: [],
 			editorTop: null,
+			editingId: null,
 		};
 	},
 
@@ -41,6 +42,7 @@ export const DiffView = React.createClass({
 
 	componentDidUpdate() {
 		let changedCommits = false;
+		// make these commits immutable or something, because they cannot change
 		for (const commit of this.state.commits) {
 					const querySelector = '.commit-id-' + commit.id;
 					const queryElem = document.querySelector(querySelector);
@@ -49,16 +51,21 @@ export const DiffView = React.createClass({
 						continue;
 					}
 					const top = queryElem.offsetTop;
-					if (commit.unsaved) {
-						if (this.state.editorTop !== top) {
-							this.setState({editorTop: top});
-						}
-					} else {
-						if (commit.top !== top) {
-							commit.top = top;
-							changedCommits = true;
-						}
+					if (commit.top !== top) {
+						commit.top = top;
+						changedCommits = true;
 					}
+		}
+
+		if (this.state.editingId !== null) {
+			const queryElem = document.querySelector('.blame-marker.editing');
+			let editorTop = null;
+			if (queryElem) {
+				editorTop = queryElem.offsetTop;
+			}
+			if (this.state.editorTop !== editorTop) {
+				this.setState({editorTop: editorTop});
+			}
 		}
 
 		if (changedCommits) {
@@ -67,8 +74,12 @@ export const DiffView = React.createClass({
 
 	},
 
-	renderCommits(commits) {
-		this.setState({commits});
+	renderCommits(commits, editingId) {
+		const newState = {commits, editingId};
+		if (!editingId) {
+			newState.editorTop = null;
+		}
+		this.setState(newState);
 	},
 
 	submitMsg() {
@@ -111,7 +122,7 @@ export const DiffView = React.createClass({
 		const {highlightCommit} = this.state;
 		return (
 			<div>
-			  <div ref="commitdiv" style={styles.commitDiv(this.state.editorTop, (highlightCommit === 'editing'))}>
+			  <div key={this.state.editingId} ref="commitdiv" style={styles.commitDiv(this.state.editorTop, (highlightCommit === 'editing'))}>
 					<div>
 						Enter a message:
 						<input ref="commitmsg" type="text"></input>

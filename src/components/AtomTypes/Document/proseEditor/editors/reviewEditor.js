@@ -30,7 +30,8 @@ const highlightPlugin = new Plugin({
     applyAction(action, val, prev, state) {
 
       if (action.type == "highlightCommit") {
-        let tState = trackPlugin.getState(state)
+        let tState = trackPlugin.getState(state);
+        const editingCommit = tState.commits.length;
         let decos = tState.blameMap
             .filter(span => span.commit !== null)
             .map(span => {
@@ -39,6 +40,9 @@ const highlightPlugin = new Plugin({
                 decorationClass += ' invisible';
               } else {
                 decorationClass += ' highlight';
+              }
+              if (span.commit === editingCommit) {
+                decorationClass += ' editing';
               }
               return Decoration.inline(span.from, span.to, {class: decorationClass}, {inclusiveLeft: true, inclusiveRight: true});
             })
@@ -205,33 +209,6 @@ function insertIntoBlameMap(map, from, to, commit) {
 
 let lastRendered = null
 
-/*
-function renderCommits(state, onAction) {
-  let curState = trackPlugin.getState(state)
-  if (lastRendered == curState) return
-  lastRendered = curState
-
-  let out = document.querySelector("#commits")
-  out.textContent = ""
-  let commits = curState.commits
-  commits.forEach(commit => {
-    let node = crel("div", {class: "commit"},
-                    crel("span", {class: "commit-time"},
-                         commit.time.getHours() + ":" + (commit.time.getMinutes() < 10 ? "0" : "")
-                         + commit.time.getMinutes()),
-                    "\u00a0 " + commit.message + "\u00a0 ",
-                    crel("button", {class: "commit-revert"}, "revert"))
-    node.lastChild.addEventListener("click", () => revertCommit(commit))
-    node.addEventListener("mouseover", e => {
-      if (!node.contains(e.relatedTarget)) onAction({type: "highlightCommit", commit})
-    })
-    node.addEventListener("mouseout", e => {
-      if (!node.contains(e.relatedTarget)) onAction({type: "clearHighlight", commit})
-    })
-    out.appendChild(node)
-  })
-}
-*/
 
 function revertCommit(commit) {
   let tState = trackPlugin.getState(state)
@@ -253,14 +230,6 @@ function revertCommit(commit) {
   }
 }
 
-/*
-document.querySelector("#commit").addEventListener("submit", e => {
-  e.preventDefault()
-  doCommit(e.target.elements.message.value || "Unnamed")
-  e.target.elements.message.value = ""
-  view.editor.focus()
-})
-*/
 
 function findInBlameMap(pos, state) {
   let map = trackPlugin.getState(state).blameMap
@@ -334,9 +303,11 @@ class ReviewEditor extends AbstractEditor {
     const state = this.view.editor.state;
     let curState = this.trackPlugin.getState(state);
     const commits = curState.commits.slice(0);
-    const unsavedId = curState.commits.length;
-    commits.push(new UnsavedCommit(unsavedId));
-    this.renderCommits(commits);
+    let editingId = null;
+    if (curState.uncommittedSteps.length > 0) {
+      editingId = curState.commits.length;
+    }
+    this.renderCommits(commits, editingId);
   }
 
 
