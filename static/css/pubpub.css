@@ -1090,10 +1090,14 @@ TESTING CSS
 	background-color: rgba(50,255,50,0.1);
 }
 
+.blame-marker.editing.invisible{
+	background-color: rgba(50,255,50,0.05);
+}
+
 .blame-marker.highlight{
 	background-color: rgba(255,255,50,0.3);
 }
 
 .blame-marker.invisible{
-	background-color: transparent;
+	background-color: rgba(255,50,50,0.05);
 }

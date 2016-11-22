@@ -88,10 +88,12 @@ export const DiffView = React.createClass({
 	},
 
 	hoverCommit(commitId) {
+		this.setState({highlightCommit: commitId});
 		this.editor1.highlightCommit(commitId);
 	},
 
 	unhoverCommt(commitId) {
+		this.setState({highlightCommit: null});
 		this.editor1.clearHighlight(commitId);
 	},
 
@@ -111,9 +113,11 @@ export const DiffView = React.createClass({
 			if (match && match[1]) {
 				const commit = parseInt(match[1]);
 				this.setState({highlightCommit: commit});
+				this.editor1.highlightCommit(commit);
 			}
 		} else if (this.state.highlightCommit) {
-				this.setState({highlightCommit: null});
+			this.editor1.clearHighlight(this.state.highlightCommit);
+			this.setState({highlightCommit: null});
 		}
 	},
 
@@ -135,13 +139,15 @@ export const DiffView = React.createClass({
 		//5) render element
 		//6) for next element, add global bump and render
 
+		const MINHEIGHT = 50;
+
 
 		const commitsTop = commits.map((commit) => {
-			return {id: commit.id, top: commit.top};
+			return {id: commit.id, top: Math.max(MINHEIGHT, commit.top)};
 		}).filter((commit) => { return (commit.top < editorTop) });
 
 		const commitsBottom = commits.map((commit) => {
-			return {id: commit.id, top: commit.top};
+			return {id: commit.id, top: Math.max(MINHEIGHT, commit.top)};
 		}).filter((commit) => { return (commit.top >= editorTop) });
 
 
@@ -170,16 +176,16 @@ export const DiffView = React.createClass({
 		const commitPositions = {};
 		filterBump(commitPositions, commitsBottom, 1);
 		filterBump(commitPositions, commitsTop, -1);
- 
+
 		return (
-			<div>
+			<div style={{backgroundColor: 'rgb(243, 243, 244)'}}>
 			  <div key={this.state.editingId} ref="commitdiv" style={styles.commitDiv(this.state.editorTop, (highlightCommit === 'editing'))}>
 					<div>
 						Enter a message:
 						<input ref="commitmsg" type="text"></input>
 						<button onClick={this.submitMsg}>Typo</button>
 						<button onClick={this.submitMsg}>Flow</button>
-						<button onClick={this.submitMsg}>Submit</button>
+						<button className="button" style={styles.submit} onClick={this.submitMsg}>Submit</button>
 					</div>
 			  </div>
 				{commits.map((commit, index) => {
@@ -190,15 +196,17 @@ export const DiffView = React.createClass({
 									onMouseOver={this.hoverCommit.bind(this, commit.id)}
 									onMouseOut={this.unhoverCommt.bind(this, commit.id)}
 									style={styles.commitMsg(positionTop, (commit.id === highlightCommit))}>
-										#{index} - {commit.message}
+										<strong>#{index}</strong> - {commit.message}
+										{/*
 										<button onClick={this.revertCommit.bind(this, commit.id)}>Revert</button>
+										*/}
 							</div>);
 					} else {
 						return null;
 					}
 
 				})}
-				<div id="richeditor1" styles={styles.reviewEditor} onMouseOver={this.onHighlightHover} onMouseOut={this.clearHighlightHover}>
+				<div id="richeditor1" style={styles.reviewEditor} onMouseOver={this.onHighlightHover} onMouseOut={this.clearHighlightHover}>
 				</div>
 			</div>
 		);
@@ -217,20 +225,30 @@ export default connect( state => {
 styles = {
 	reviewEditor: {
 		width: '650px',
-		marginLeft: '50px',
+		marginLeft: '100px',
+		backgroundColor: 'white',
+		padding: '0px 25px',
 	},
 	commitMsg: function(commitTop, highlighted) {
 		return {
 			position: 'absolute',
 			top: commitTop,
-			left: '700px',
+			left: '800px',
 			zIndex: 100,
 			minHeight: 50,
-			border: '1px solid black',
+			// border: '1px solid black',
 			display: 'block',
 			cursor: 'pointer',
-			backgroundColor: (highlighted) ? 'rgba(200,200,50,0.4)' : null,
+			// backgroundColor: (highlighted) ? 'rgba(200,200,50,0.4)' : 'white',
+			backgroundColor: 'white',
+			boxShadow: 'rgb(128, 130, 132) 0px 0px 2px',
+			padding: '5px 15px',
+			transition: '0.25s ease-in-out',
+			transform: (highlighted) ? 'translate(-0.5em,0)' : null,
 		};
+	},
+	submit: {
+		fontSize: '0.7em',
 	},
 	commitDiv: function(editorTop, highlighted) {
 		if (!editorTop) {
@@ -241,9 +259,11 @@ styles = {
 		return {
 			position: 'absolute',
 			top: editorTop,
-			left: '700px',
+			left: '800px',
 			zIndex: 100,
-			backgroundColor: (highlighted) ? 'rgba(200,200,50,0.4)' : null,
+			backgroundColor: (highlighted) ? 'rgba(200,200,50,0.4)' : 'white',
+			boxShadow: 'rgb(128, 130, 132) 0px 0px 2px',
+			padding: '5px 15px',
 		};
 	},
 	followButton: {
