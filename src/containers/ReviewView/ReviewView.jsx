@@ -151,11 +151,10 @@ export const DiffView = React.createClass({
 		}).filter((commit) => { return (commit.top >= editorTop) });
 
 
-		const filterBump = (commitMap, _commits, direction) => {
+		const filterBump = (commitMap, _commits, direction, EDITOR_DIFF) => {
 			let bumpAmount = 0;
 			const sortedCommits = _commits.sort((a, b) => (a.top - b.top) * direction);
 			const MAX_DIFF = 75;
-			const EDITOR_DIFF = 150;
 
 			let lastCommitTop = editorTop;
 			for (const commit of sortedCommits) {
@@ -174,12 +173,12 @@ export const DiffView = React.createClass({
 		};
 
 		const commitPositions = {};
-		filterBump(commitPositions, commitsBottom, 1);
-		filterBump(commitPositions, commitsTop, -1);
+		filterBump(commitPositions, commitsBottom, 1, 150);
+		filterBump(commitPositions, commitsTop, -1, 75);
 
 		return (
 			<div style={{backgroundColor: 'rgb(243, 243, 244)'}}>
-			  <div key={this.state.editingId} ref="commitdiv" style={styles.commitDiv(this.state.editorTop, (highlightCommit === 'editing'))}>
+			  <div key={this.state.editingId + 1} ref="commitdiv" style={styles.commitDiv(this.state.editorTop, (highlightCommit === 'editing'))}>
 					<div>
 						Enter a message:
 						<input ref="commitmsg" type="text"></input>
@@ -261,9 +260,12 @@ styles = {
 			top: editorTop,
 			left: '800px',
 			zIndex: 100,
-			backgroundColor: (highlighted) ? 'rgba(200,200,50,0.4)' : 'white',
+			// backgroundColor: (highlighted) ? 'rgba(200,200,50,0.4)' : 'white',
+			backgroundColor: 'white',
 			boxShadow: 'rgb(128, 130, 132) 0px 0px 2px',
 			padding: '5px 15px',
+			animation: 'showHide 0.25s normal forwards ease-in-out',
+			animationIterationCount: '1',
 		};
 	},
 	followButton: {

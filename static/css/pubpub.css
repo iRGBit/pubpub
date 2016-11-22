@@ -1101,3 +1101,18 @@ TESTING CSS
 .blame-marker.invisible{
 	background-color: rgba(255,50,50,0.05);
 }
+
+@keyframes showHide {
+    0% {
+			opacity:0;
+			transform: translate(50px, 0px);
+		}
+    50% {
+			opacity:0.5
+			transform: translate(25px, 0px);
+		}
+    100% {
+			opacity: 1
+			transform: translate(0px, 0px);
+		}
+}
