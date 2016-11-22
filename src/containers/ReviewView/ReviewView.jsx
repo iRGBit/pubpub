@@ -95,6 +95,10 @@ export const DiffView = React.createClass({
 		this.editor1.clearHighlight(commitId);
 	},
 
+	revertCommit(commitId) {
+		this.editor1.revertCommit(commitId);
+	},
+
 	onHighlightHover(evt) {
 		const hoverClass = evt.target.className;
 		if (hoverClass.indexOf('commit-id') !== -1) {
@@ -119,7 +123,54 @@ export const DiffView = React.createClass({
 
 
 	render: function() {
-		const {highlightCommit} = this.state;
+		const {highlightCommit, commits, editorTop} = this.state;
+
+		//Transform Map algorithm:
+		//1) Sort by top
+		//2) Keep running count of how much needs to be bumped down
+		//3) Place editor first
+		//4) Run same algorithm up and down from the editor keeping a global bump
+		//3) check if next element has enough space in the bottom
+		//4) if not, increase global bump down, otherwise decrease global bump
+		//5) render element
+		//6) for next element, add global bump and render
+
+
+		const commitsTop = commits.map((commit) => {
+			return {id: commit.id, top: commit.top};
+		}).filter((commit) => { return (commit.top < editorTop) });
+
+		const commitsBottom = commits.map((commit) => {
+			return {id: commit.id, top: commit.top};
+		}).filter((commit) => { return (commit.top >= editorTop) });
+
+
+		const filterBump = (commitMap, _commits, direction) => {
+			let bumpAmount = 0;
+			const sortedCommits = _commits.sort((a, b) => (a.top - b.top) * direction);
+			const MAX_DIFF = 75;
+			const EDITOR_DIFF = 150;
+
+			let lastCommitTop = editorTop;
+			for (const commit of sortedCommits) {
+				const diffTop = Math.abs(lastCommitTop - (commit.top + bumpAmount * direction));
+				const SPACE_BETWEEN = (lastCommitTop === editorTop) ? EDITOR_DIFF : MAX_DIFF;
+ 				if (SPACE_BETWEEN < diffTop ) {
+					bumpAmount += (SPACE_BETWEEN - diffTop);
+				} else {
+					bumpAmount -= (diffTop - SPACE_BETWEEN);
+				}
+				bumpAmount = Math.max(bumpAmount, 0);
+				commitMap[commit.id] = commit.top + bumpAmount * direction;
+				lastCommitTop = commitMap[commit.id];
+			}
+			return commitMap;
+		};
+
+		const commitPositions = {};
+		filterBump(commitPositions, commitsBottom, 1);
+		filterBump(commitPositions, commitsTop, -1);
+ 
 		return (
 			<div>
 			  <div key={this.state.editingId} ref="commitdiv" style={styles.commitDiv(this.state.editorTop, (highlightCommit === 'editing'))}>
@@ -131,15 +182,16 @@ export const DiffView = React.createClass({
 						<button onClick={this.submitMsg}>Submit</button>
 					</div>
 			  </div>
-				{this.state.commits.map((commit, index) => {
+				{commits.map((commit, index) => {
 					if (commit.top) {
+							const positionTop = (commitPositions[commit.id]) ? commitPositions[commit.id] : commit.top;
 							return (
 								<div
 									onMouseOver={this.hoverCommit.bind(this, commit.id)}
 									onMouseOut={this.unhoverCommt.bind(this, commit.id)}
-									style={styles.commitMsg(commit.top, (commit.id === highlightCommit))}>
+									style={styles.commitMsg(positionTop, (commit.id === highlightCommit))}>
 										#{index} - {commit.message}
-										<button>Revert</button>
+										<button onClick={this.revertCommit.bind(this, commit.id)}>Revert</button>
 							</div>);
 					} else {
 						return null;

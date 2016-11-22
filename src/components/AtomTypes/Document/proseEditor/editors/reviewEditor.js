@@ -210,10 +210,12 @@ function insertIntoBlameMap(map, from, to, commit) {
 let lastRendered = null
 
 
-function revertCommit(commit) {
+function revertCommit(commitId, state) {
   let tState = trackPlugin.getState(state)
-  let found = tState.commits.indexOf(commit)
-  if (found == -1) return
+  let found = tState.commits[commitId];
+  if (!found) return
+  const commit = found;
+  let actions = [];
 
   if (tState.uncommittedSteps.length) return alert("Commit your changes first!")
 
@@ -225,9 +227,13 @@ function revertCommit(commit) {
     if (result && result.doc) remap.appendMap(remapped.getMap(), i)
   }
   if (tr.steps.length) {
-    onAction(tr.action())
-    onAction(commitAction(`Revert '${commit.message}'`))
+    console.log('removing action', tr.steps)
+    actions.push(tr.action());
+    // actions.push(commitAction(`Revert '${commit.message}'`));
+  } else {
+    console.log('could not revert!');
   }
+  return actions;
 }
 
 
@@ -296,6 +302,13 @@ class ReviewEditor extends AbstractEditor {
   clearHighlight = (commitId) => {
     const commitAction = {type: "clearHighlight", commit: commitId};
     this._onAction(commitAction);
+  }
+
+  revertCommit = (commitId) => {
+    const actions = revertCommit(commitId, this.view.editor.state);
+    for (const action of actions) {
+      this._onAction(action);
+    }
   }
 
   _onAction(action) {
