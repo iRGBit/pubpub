@@ -92,6 +92,27 @@ const highlightPlugin = new Plugin({
       }
       return null;
 
+    },
+    handleTextInput(view, from, to, text) {
+      // console.log('got text!', arguments);
+      const {Transform} = require('prosemirror-transform');
+      if (from !== to) {
+        const doc = view.state.doc;
+        const textNode = pubSchema.text(text);
+        const newT = view.state.tr.replaceWith(to, to, textNode);
+        const action = {
+          type: 'transform',
+          transform: newT
+        };
+        const markDeleteAction = {
+          type: 'markDelete',
+          to: to,
+          from: from,
+        };
+        view.props.onAction(action);
+        view.props.onAction(markDeleteAction);
+        return true;
+      }
     }
   }
 })
@@ -130,6 +151,8 @@ class TrackState {
   }
 
   applyTransform(transform) {
+    // console.log(transform);
+    console.log(transform.steps);
     let inverted = transform.steps.map((step, i) => step.invert(transform.docs[i]))
     const newBlameMap = updateBlameMap(this.blameMap, transform, this.commits.length);
     return new TrackState(newBlameMap,

@@ -84,7 +84,19 @@ class AbstractEditor {
 
 
   _onAction (action) {
-    // console.log(action);
+    /*
+    if (action.transform) {
+      for (const step of action.transform.steps) {
+        // console.log(step);
+        if (step.slice.content.content.length === 0) {
+          console.log('deleted!');
+        const newStep = step.invert(this.view.editor.state.doc);
+        action.transform.step(newStep);
+        }
+      }
+    }
+    */
+
     const newState = this.view.editor.state.applyAction(action);
     this.view.updateState(newState);
     if (action.type === "selection") {

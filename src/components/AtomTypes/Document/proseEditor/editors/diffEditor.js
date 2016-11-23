@@ -5,6 +5,32 @@ import {schema as pubSchema} from '../schema';
 var jsondiffpatch = require('jsondiffpatch').create({textDiff: {minLength: 3}});
 let highlightSet = null;
 
+
+const getDiffStr = function(doc) {
+	const nodeSize = doc.nodeSize;
+	let diffStr = "";
+
+	for (let i = 0; i < nodeSize - 1; i++) {
+		const child = doc.nodeAt(i);
+		if (child) {
+			let diffText = "";
+			if (child.isText) {
+				diffText = child.text;
+				i += child.nodeSize - 1;
+			} else {
+				diffText = child.type.name.charAt(0);
+			}
+			diffStr += diffText;
+		} else {
+			diffStr += "Z";
+		}
+
+	}
+	console.log(diffStr);
+	console.log('COMPARE', nodeSize, diffStr.length);
+	return diffStr;
+}
+
 class DiffRichEditor extends AbstractEditor {
 
   constructor({place, text, contents, otherEditor}) {
@@ -21,12 +47,10 @@ class DiffRichEditor extends AbstractEditor {
       docJSON = contents;
     }
     this.create({place, contents: docJSON, plugins});
-    console.log('Other editor', otherEditor);
   }
 
   create({place, contents, plugins}) {
 
-    console.log('MAKING PLUGINS');
 
     const {DecorationSet, Decoration} = require("prosemirror-view");
 
@@ -49,8 +73,26 @@ class DiffRichEditor extends AbstractEditor {
           if (!otherEditor) {
             return DecorationSet.empty;
           }
-          const text1 = otherEditor.toJSON();
-          const text2 = state.doc.toJSON();
+          const text1 = getDiffStr(otherEditor.view.editor.state.doc);
+          const text2 = getDiffStr(state.doc);
+
+          var jsdiff = require('diff');
+          var diffResult = jsdiff.diffChars(text1, text2);
+          const decos = [];
+          let startCount = 0;
+          for (const diff of diffResult) {
+            // const strippedString = diff.value.replace(/\s/g, '');
+						const strippedString = diff.value;
+            if (diff.added || diff.removed) {
+              const to = startCount;
+              const from = startCount + strippedString.length;
+              const deco = Decoration.inline(to, from, {class: "blame-marker"}, {inclusiveLeft: true, inclusiveRight: true});
+              decos.push(deco);
+            }
+            startCount += strippedString.length;
+
+          }
+          /*
           var delta = jsondiffpatch.diff(text1, text2);
           const decos = [];
           const doc = state.doc;
@@ -60,6 +102,7 @@ class DiffRichEditor extends AbstractEditor {
               decos.push(deco);
             }
           });
+          */
           highlightSet = DecorationSet.create(state.doc, decos);
           return highlightSet;
         }

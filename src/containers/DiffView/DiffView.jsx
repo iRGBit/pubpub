@@ -41,14 +41,25 @@ export const DiffView = React.createClass({
 		const place1 = document.getElementById('richeditor1');
 		const place2 = document.getElementById('richeditor2');
 
-		this.editor1 = new RichEditor({place: place1, text: "# what \n heyyyyyyy \n ## a \n# what \n ## hi \n # hi"});
-		this.editor2 = new DiffRichEditor({place: place2, text: "# what \n heyyyyyyy \n# what \n ## hi \n # hi", otherEditor: this.editor1});
+		this.editor1 = new RichEditor({place: place1, text: "# what \n heyyyyyyy \n# what \n ## hi \n # hi"});
+		this.editor2 = new DiffRichEditor({place: place2, text: "# what \n heyyyyyyy\n ## a\n# what \n ## hi \n # hi", otherEditor: this.editor1});
 
-		window.setTimeout(this.compareDiffs, 5000);
+		window.setTimeout(this.compareDiffs, 1000);
 
 	},
 
 	compareDiffs() {
+
+		var jsdiff = require('diff');
+
+		const doc1 = this.editor1.view.editor.state.doc;
+		const doc2 = this.editor2.view.editor.state.doc;
+		const str1 = this.logDoc(doc1);
+		const str2 = this.logDoc(doc2);
+
+		var diffResult = jsdiff.diffChars(str1, str2);
+		console.log(diffResult);
+		return;
 		const a = this.editor1.toJSON();
 		const b = this.editor2.toJSON();
 
@@ -63,6 +74,33 @@ export const DiffView = React.createClass({
 		var changes2 = diffchangeset(a, b);
 		console.log('json diff2: ', changes2);
 	},
+
+	logDoc(node) {
+		const nodeSize = node.nodeSize;
+		console.log('nodeSize', nodeSize);
+
+		let diffStr = "";
+
+		for (let i = 0; i < nodeSize - 1; i++) {
+			const child = node.nodeAt(i);
+			if (child) {
+				let diffText = "";
+				if (child.isText) {
+					diffText = child.text;
+					i += child.nodeSize;
+				} else {
+					diffText = child.type.name.charAt(0);
+				}
+				diffStr += diffText + " ";
+			} else {
+				diffStr += "Z";
+			}
+
+		}
+		return diffStr;
+		console.log(diffStr);
+	},
+
 
 
 	render: function() {

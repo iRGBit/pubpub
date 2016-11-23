@@ -139,7 +139,7 @@ export const DiffView = React.createClass({
 		//5) render element
 		//6) for next element, add global bump and render
 
-		const MINHEIGHT = 50;
+		const MINHEIGHT = 75;
 
 
 		const commitsTop = commits.map((commit) => {
@@ -182,8 +182,10 @@ export const DiffView = React.createClass({
 					<div>
 						Enter a message:
 						<input ref="commitmsg" type="text"></input>
+						{/*
 						<button onClick={this.submitMsg}>Typo</button>
 						<button onClick={this.submitMsg}>Flow</button>
+						*/}
 						<button className="button" style={styles.submit} onClick={this.submitMsg}>Submit</button>
 					</div>
 			  </div>
